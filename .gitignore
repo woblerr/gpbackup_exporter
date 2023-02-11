@@ -1,0 +1,28 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.html
+*.zip
+*.tar
+*.tar.gz
+
+# Binary file
+/gpbackup_exporter
+
+# Service file
+/gpbackup_exporter.service
+
+# Release dir
+/dist
+
+# VSCode
+/.vscode
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
