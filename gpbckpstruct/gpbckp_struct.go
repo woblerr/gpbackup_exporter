@@ -26,7 +26,7 @@ type BackupConfig struct {
 	MetadataOnly          bool               `yaml:"metadataonly"`
 	Plugin                string             `yaml:"plugin"`
 	PluginVersion         string             `yaml:"pluginversion"`
-	RestorePlan           []restorePlanEntry `yaml:"restoreplan"`
+	RestorePlan           []RestorePlanEntry `yaml:"restoreplan"`
 	SingleDataFile        bool               `yaml:"singledatafile"`
 	Timestamp             string             `yaml:"timestamp"`
 	EndTime               string             `yaml:"endtime"`
@@ -35,7 +35,7 @@ type BackupConfig struct {
 	Status                string             `yaml:"status"`
 }
 
-type restorePlanEntry struct {
+type RestorePlanEntry struct {
 	Timestamp string   `yaml:"timestamp"`
 	TableFQNs []string `yaml:"tablefqdn"`
 }

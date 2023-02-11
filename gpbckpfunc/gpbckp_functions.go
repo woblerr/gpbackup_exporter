@@ -16,6 +16,8 @@ const layout = "20060102150405"
 //   - data-only – contains only user data from the database.
 func GetBackupType(backupData gpbckpstruct.BackupConfig) string {
 	var backupType string
+	// For gpbackup you cannot combine --data-only or --metadata-only with --incremental (see docs).
+	// So these flags cannot be set at the same time.
 	switch {
 	case backupData.Incremental:
 		backupType = "incremental"
