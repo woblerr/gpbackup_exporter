@@ -1,9 +1,9 @@
-package functions
+package gpbckpfunc
 
 import (
 	"time"
 
-	gpbckpStruct "github.com/woblerr/gpbackup_exporter/structure"
+	"github.com/woblerr/gpbackup_exporter/gpbckpstruct"
 )
 
 const layout = "20060102150405"
@@ -14,7 +14,7 @@ const layout = "20060102150405"
 //   - incremental – contains user data, all global and local metadata changed since a previous full backup;
 //   - metadata-only – contains only global and local metadata for the database;
 //   - data-only – contains only user data from the database.
-func GetBackupType(backupData gpbckpStruct.BackupConfig) string {
+func GetBackupType(backupData gpbckpstruct.BackupConfig) string {
 	var backupType string
 	switch {
 	case backupData.Incremental:
@@ -37,7 +37,7 @@ func GetBackupType(backupData gpbckpStruct.BackupConfig) string {
 //   - include-table – at least one "--include-table" option was specified;
 //   - exclude-table – at least one "--exclude-table" option was specified;
 //   - "" - no options was specified.
-func GetObjectFilteringInfo(backupData gpbckpStruct.BackupConfig) string {
+func GetObjectFilteringInfo(backupData gpbckpstruct.BackupConfig) string {
 	var objectFiltering string
 	switch {
 	case backupData.IncludeSchemaFiltered:

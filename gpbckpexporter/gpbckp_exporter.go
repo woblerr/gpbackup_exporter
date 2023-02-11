@@ -1,4 +1,4 @@
-package exporter
+package gpbckpexporter
 
 import (
 	"net/http"
@@ -75,7 +75,7 @@ func GetExporterInfo(exporterVersion string, logger log.Logger) {
 // ResetMetrics reset metrics
 func ResetMetrics() {
 	gpbckpBackupStatusMetric.Reset()
-	gpbckpkBackupDataDeletedStatusMetric.Reset()
+	gpbckpBackupDataDeletedStatusMetric.Reset()
 	gpbckpBackupInfoMetric.Reset()
 	gpbckpBackupDurationMetric.Reset()
 }

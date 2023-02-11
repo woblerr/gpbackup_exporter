@@ -11,7 +11,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
-	gpbckp "github.com/woblerr/gpbackup_exporter/exporter"
+	"github.com/woblerr/gpbackup_exporter/gpbckpexporter"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -68,7 +68,7 @@ func main() {
 		"name", filepath.Base(os.Args[0]),
 		"version", version)
 	// Setup parameters for exporter.
-	gpbckp.SetPromPortAndPath(*promPort, *promPath, *promTLSConfigFile)
+	gpbckpexporter.SetPromPortAndPath(*promPort, *promPath, *promTLSConfigFile)
 	level.Info(logger).Log(
 		"mgs", "Use port and HTTP endpoint",
 		"port", *promPort,
@@ -76,14 +76,14 @@ func main() {
 		"web-config", *promTLSConfigFile,
 	)
 	// Start exporter.
-	gpbckp.StartPromEndpoint(logger)
+	gpbckpexporter.StartPromEndpoint(logger)
 	// Set up exporter info metric.
-	gpbckp.GetExporterInfo(version, logger)
+	gpbckpexporter.GetExporterInfo(version, logger)
 	for {
 		// Reset metrics.
-		gpbckp.ResetMetrics()
+		gpbckpexporter.ResetMetrics()
 		// Get information form gpbackup_history.yaml.
-		gpbckp.GetGPBackupInfo(*gpbckpHistoryFilePath, logger)
+		gpbckpexporter.GetGPBackupInfo(*gpbckpHistoryFilePath, logger)
 		// Sleep for 'collection.interval' seconds.
 		time.Sleep(time.Duration(*collectionInterval) * time.Second)
 	}

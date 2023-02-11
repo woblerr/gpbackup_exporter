@@ -1,4 +1,4 @@
-package structure
+package gpbckpstruct
 
 type History struct {
 	BackupConfigs []BackupConfig `yaml:"backupconfigs"`

@@ -1,4 +1,4 @@
-package exporter
+package gpbckpexporter
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
@@ -16,7 +16,7 @@ var (
 			"object_filtering",
 			"plugin",
 			"timestamp"})
-	gpbckpkBackupDataDeletedStatusMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	gpbckpBackupDataDeletedStatusMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "gpbackup_backup_deleted_status",
 		Help: "Backup deleted status.",
 	},
