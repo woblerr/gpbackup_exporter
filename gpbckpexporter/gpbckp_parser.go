@@ -17,18 +17,19 @@ import (
 
 const emptyLabel = "none"
 
-var hData gpbckpstruct.History
+var execReadFile = ioutil.ReadFile
 
 type setUpMetricValueFunType func(metric *prometheus.GaugeVec, value float64, labels ...string) error
 
 func readHistoryFile(filename string) ([]byte, error) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := execReadFile(filename)
 	return data, err
 }
 
-func parseResult(output []byte) error {
+func parseResult(output []byte) (gpbckpstruct.History, error) {
+	var hData gpbckpstruct.History
 	err := yaml.Unmarshal(output, &hData)
-	return err
+	return hData, err
 }
 
 func getExporterMetrics(exporterVer string, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {

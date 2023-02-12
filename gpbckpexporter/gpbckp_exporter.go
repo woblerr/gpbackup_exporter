@@ -49,18 +49,19 @@ func StartPromEndpoint(logger log.Logger) {
 	}(logger)
 }
 
+// GetGPBackupInfo et and parse gpbackup history file
 func GetGPBackupInfo(historyFile string, logger log.Logger) {
 	historyData, err := readHistoryFile(historyFile)
 	if err != nil {
 		level.Error(logger).Log("msg", "Read gpbackup history file failed", "err", err)
 	}
-	err = parseResult(historyData)
+	parseHData, err := parseResult(historyData)
 	if err != nil {
 		level.Error(logger).Log("msg", "Parse YAML failed", "err", err)
 	}
-	if len(hData.BackupConfigs) != 0 {
-		for i := 0; i < len(hData.BackupConfigs); i++ {
-			getBackupMetrics(hData.BackupConfigs[i], setUpMetricValue, logger)
+	if len(parseHData.BackupConfigs) != 0 {
+		for i := 0; i < len(parseHData.BackupConfigs); i++ {
+			getBackupMetrics(parseHData.BackupConfigs[i], setUpMetricValue, logger)
 		}
 	} else {
 		level.Warn(logger).Log("msg", "No backup data returned")
