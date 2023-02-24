@@ -67,6 +67,7 @@ jobs:
           DOCKERHUB_PKG: ${{ secrets.DOCKEHUB_TOKEN }}
           GITHUB_SHA: ${{ github.sha}}
           GITHUB_REF: ${{ github.ref}}
+          BUILD_PLATFORMS: ${{ env.build_platforms }}
         run: |
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
           sha="$(echo ${GITHUB_SHA} | cut -c1-7)"
@@ -88,6 +89,7 @@ jobs:
           DOCKERHUB_PKG: ${{ secrets.DOCKEHUB_TOKEN }}
           GITHUB_SHA: ${{ github.sha}}
           GITHUB_REF: ${{ github.ref}}
+          BUILD_PLATFORMS: ${{ env.build_platforms }}
         run: |
           ref="$(echo ${GITHUB_REF} | cut -d'/' -f3)"
           build_ver="$(echo ${ref} | cut -c 2-)"
