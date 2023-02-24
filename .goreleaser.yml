@@ -36,7 +36,7 @@ nfpms:
       amd64: x86_64
     homepage: https://github.com/woblerr/gpbackup_exporter
     maintainer: Anton Kurochkin
-    description: Prometheus exporter for pgBackRest
+    description: Prometheus exporter for gpbackup
     license: MIT
     formats:
       - deb
