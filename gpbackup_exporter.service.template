@@ -1,0 +1,16 @@
+[Unit]
+Description=gpbackup_exporter
+
+[Service]
+Type=simple
+Environment="EXPORTER_ENDPOINT=/metrics"
+Environment="EXPORTER_PORT=19854"
+Environment="COLLECT_INTERVAL=600"
+Environment="HISTORY_FILE=/data/master/gpseg-1/gpbackup_history.yaml"
+
+ExecStart=/usr/bin/gpbackup_exporter --gpbackup.history-file=${HISTORY_FILE} --prom.endpoint=${EXPORTER_ENDPOINT} --prom.port=${EXPORTER_PORT} --collect.interval=${COLLECT_INTERVAL}
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target 
