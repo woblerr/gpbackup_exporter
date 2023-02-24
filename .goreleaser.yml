@@ -1,0 +1,58 @@
+---
+project_name: gpbackup_exporter
+
+builds:
+  - env: 
+      - CGO_ENABLED=0
+    goos: 
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags: 
+      - -trimpath
+      - -mod=vendor
+    ldflags: "-s -w -X main.version={{ .Version }}"
+    main: .
+
+archives:
+  - id: gpbackup_exporter
+    files:
+      - LICENSE
+    format: tar.gz
+    name_template: "{{ .Binary }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    wrap_in_directory: true
+    replacements:
+      amd64: x86_64
+      darwin: macos
+
+nfpms:
+  - id: gpbackup_exporter
+    package_name: gpbackup_exporter
+    builds:
+      - gpbackup_exporter
+    replacements:
+      amd64: x86_64
+    homepage: https://github.com/woblerr/gpbackup_exporter
+    maintainer: Anton Kurochkin
+    description: Prometheus exporter for pgBackRest
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    file_name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    contents:
+      - src: gpbackup_exporter.service.template
+        dst: /etc/systemd/system/gpbackup_exporter.service
+        type: config
+
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+
+release:
+  draft: true
+
+changelog:
+  skip: true
