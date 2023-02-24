@@ -8,7 +8,7 @@ import (
 
 const layout = "20060102150405"
 
-// Get backup type.
+// GetBackupType Get backup type.
 // The "backup_type" label value is calculated, based on:
 //   - full - contains user data, all global and local metadata for the database;
 //   - incremental – contains user data, all global and local metadata changed since a previous full backup;
@@ -31,7 +31,7 @@ func GetBackupType(backupData gpbckpstruct.BackupConfig) string {
 	return backupType
 }
 
-// Get object filtering information.
+// GetObjectFilteringInfo Get object filtering information.
 // The "object_filtering" label value is calculated, base on
 // on whether at least one of the flags was specified:
 //   - include-schema – at least one "--include-schema" option was specified;
@@ -56,7 +56,7 @@ func GetObjectFilteringInfo(backupData gpbckpstruct.BackupConfig) string {
 	return objectFiltering
 }
 
-// Get backup duration.
+// GetBackupDuration Get backup duration.
 func GetBackupDuration(start, end string) (float64, error) {
 	var (
 		zeroDuration       float64 = 0
