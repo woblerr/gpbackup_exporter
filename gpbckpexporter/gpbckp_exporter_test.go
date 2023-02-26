@@ -29,6 +29,10 @@ func TestSetPromPortAndPath(t *testing.T) {
 func TestGetGPBackupInfo(t *testing.T) {
 	type args struct {
 		historyFile string
+		bckpType    string
+		bckpIncl    []string
+		bckpExcl    []string
+		cDepth      int
 	}
 	tests := []struct {
 		name     string
@@ -65,22 +69,27 @@ func TestGetGPBackupInfo(t *testing.T) {
   endtime: "20230118152656"
   withoutglobals: false
   withstatistics: false
-  status: Success`},
+  status: Success`,
+				"",
+				[]string{""},
+				[]string{""},
+				0,
+			},
 			"level=debug msg=\"Metric gpbackup_backup_status\" value=0 labels=full,core,none,none,20230118152654",
 		},
 		{
 			"FailedDataReturn",
-			args{"return error"},
+			args{"return error", "", []string{""}, []string{""}, 0},
 			"level=error msg=\"Read gpbackup history file failed\" err=\"Error for testing\"",
 		},
 		{
 			"InvalidDataReturn",
-			args{"42"},
+			args{"42", "", []string{""}, []string{""}, 0},
 			"level=error msg=\"Parse YAML failed\" err=\"yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!int `42` into gpbckpstruct.History\"",
 		},
 		{
 			"NoDataReturn",
-			args{""},
+			args{"", "", []string{""}, []string{""}, 0},
 			"level=warn msg=\"No backup data returned\"",
 		},
 	}
@@ -91,7 +100,14 @@ func TestGetGPBackupInfo(t *testing.T) {
 			defer func() { execReadFile = ioutil.ReadFile }()
 			out := &bytes.Buffer{}
 			lc := log.NewLogfmtLogger(out)
-			GetGPBackupInfo(tt.args.historyFile, lc)
+			GetGPBackupInfo(
+				tt.args.historyFile,
+				tt.args.bckpType,
+				tt.args.bckpIncl,
+				tt.args.bckpExcl,
+				tt.args.cDepth,
+				lc,
+			)
 			if !strings.Contains(out.String(), tt.testText) {
 				t.Errorf("\nVariable do not match:\n%s\nwant:\n%s", tt.testText, out.String())
 			}
