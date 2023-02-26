@@ -128,7 +128,7 @@ func main() {
 			*gpbckpHistoryFilePath,
 			*gpbckpBackupType,
 			*gpbckpIncludeDB,
-			*gpbckpExcludeDb,
+			*gpbckpExcludeDB,
 			*collectionDepth,
 			logger,
 		)
