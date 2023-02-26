@@ -6,7 +6,7 @@ import (
 	"github.com/woblerr/gpbackup_exporter/gpbckpstruct"
 )
 
-const layout = "20060102150405"
+const Layout = "20060102150405"
 
 // GetBackupType Get backup type.
 // The "backup_type" label value is calculated, based on:
@@ -63,11 +63,11 @@ func GetBackupDuration(start, end string) (float64, error) {
 		startTime, endTime time.Time
 		err                error
 	)
-	startTime, err = time.Parse(layout, start)
+	startTime, err = time.Parse(Layout, start)
 	if err != nil {
 		return zeroDuration, err
 	}
-	endTime, err = time.Parse(layout, end)
+	endTime, err = time.Parse(Layout, end)
 	if err != nil {
 		return zeroDuration, err
 	}

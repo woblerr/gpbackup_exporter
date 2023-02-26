@@ -53,6 +53,13 @@ var (
 			"object_filtering",
 			"plugin",
 			"timestamp"})
+	gpbckpBackupSinceLastCompletionSecondsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "gpbackup_backup_since_last_completion_seconds",
+		Help: "Seconds since the last completed backup.",
+	},
+		[]string{
+			"backup_type",
+			"database_name"})
 	gpbckpExporterInfoMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "gpbackup_exporter_info",
 		Help: "Information about gpbackup exporter.",

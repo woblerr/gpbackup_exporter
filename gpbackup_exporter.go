@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -35,9 +36,25 @@ func main() {
 			"collect.interval",
 			"Collecting metrics interval in seconds.",
 		).Default("600").Int()
+		collectionDepth = kingpin.Flag(
+			"collect.depth",
+			"Metrics depth collection in days. Metrics for backup older than this interval will not be collected. 0 - disable.",
+		).Default("0").Int()
 		gpbckpHistoryFilePath = kingpin.Flag(
 			"gpbackup.history-file",
 			"Path to gpbackup_history.yaml",
+		).Default("").String()
+		gpbckpIncludeDB = kingpin.Flag(
+			"gpbackup.db-include",
+			"Specific db for collecting metrics. Can be specified several times.",
+		).Default("").PlaceHolder("\"\"").Strings()
+		gpbckpExcludeDb = kingpin.Flag(
+			"gpbackup.db-exclude",
+			"Specific db to exclude from collecting metrics. Can be specified several times.",
+		).Default("").PlaceHolder("\"\"").Strings()
+		gpbckpBackupType = kingpin.Flag(
+			"gpbackup.backup-type",
+			"Specific backup type for collecting metrics. One of: [full, incremental, data-only, metadata-only].",
 		).Default("").String()
 	)
 	// Set logger config.
@@ -67,6 +84,30 @@ func main() {
 		"msg", "Starting exporter",
 		"name", filepath.Base(os.Args[0]),
 		"version", version)
+	if *collectionDepth > 0 {
+		level.Info(logger).Log(
+			"mgs", "Metrics depth collection in days",
+			"depth", *collectionDepth)
+	}
+	if strings.Join(*gpbckpIncludeDB, "") != "" {
+		for _, db := range *gpbckpIncludeDB {
+			level.Info(logger).Log(
+				"mgs", "Collecting metrics for specific DB",
+				"DB", db)
+		}
+	}
+	if strings.Join(*gpbckpExcludeDb, "") != "" {
+		for _, db := range *gpbckpExcludeDb {
+			level.Info(logger).Log(
+				"mgs", "Exclude collecting metrics for specific DB",
+				"DB", db)
+		}
+	}
+	if *gpbckpBackupType != "" {
+		level.Info(logger).Log(
+			"mgs", "Collecting metrics for specific backup type",
+			"type", *gpbckpBackupType)
+	}
 	// Setup parameters for exporter.
 	gpbckpexporter.SetPromPortAndPath(*promPort, *promPath, *promTLSConfigFile)
 	level.Info(logger).Log(
@@ -83,7 +124,14 @@ func main() {
 		// Reset metrics.
 		gpbckpexporter.ResetMetrics()
 		// Get information form gpbackup_history.yaml.
-		gpbckpexporter.GetGPBackupInfo(*gpbckpHistoryFilePath, logger)
+		gpbckpexporter.GetGPBackupInfo(
+			*gpbckpHistoryFilePath,
+			*gpbckpBackupType,
+			*gpbckpIncludeDB,
+			*gpbckpExcludeDb,
+			*collectionDepth,
+			logger,
+		)
 		// Sleep for 'collection.interval' seconds.
 		time.Sleep(time.Duration(*collectionInterval) * time.Second)
 	}

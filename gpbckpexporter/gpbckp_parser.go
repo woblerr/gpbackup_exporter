@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-kit/log"
 	"gopkg.in/yaml.v3"
@@ -17,9 +18,12 @@ import (
 
 const emptyLabel = "none"
 
-var execReadFile = ioutil.ReadFile
-
 type setUpMetricValueFunType func(metric *prometheus.GaugeVec, value float64, labels ...string) error
+
+type backupMap map[string]time.Time
+type lastBackupMap map[string]backupMap
+
+var execReadFile = ioutil.ReadFile
 
 func readHistoryFile(filename string) ([]byte, error) {
 	data, err := execReadFile(filename)
@@ -209,6 +213,36 @@ func getBackupMetrics(backupData gpbckpstruct.BackupConfig, setUpMetricValueFun 
 				"msg", "Metric gpbackup_backup_info set up failed",
 				"err", err,
 			)
+		}
+	}
+}
+
+func getBackupLastMetrics(lastBackups lastBackupMap, currentUnixTime int64, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
+	for db, bckps := range lastBackups {
+		for bckpType, endTime := range bckps {
+			level.Debug(logger).Log(
+				"msg", "Metric gpbackup_backup_since_last_completion_seconds",
+				"value", time.Unix(currentUnixTime, 0).Sub(endTime).Seconds(),
+				"labels",
+				strings.Join(
+					[]string{
+						bckpType,
+						db,
+					}, ",",
+				),
+			)
+			err := setUpMetricValueFun(
+				gpbckpBackupSinceLastCompletionSecondsMetric,
+				time.Unix(currentUnixTime, 0).Sub(endTime).Seconds(),
+				bckpType,
+				db,
+			)
+			if err != nil {
+				level.Error(logger).Log(
+					"msg", "Metric gpbackup_backup_since_last_completion_seconds set up failed",
+					"err", err,
+				)
+			}
 		}
 	}
 }
