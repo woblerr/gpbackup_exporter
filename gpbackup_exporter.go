@@ -48,7 +48,7 @@ func main() {
 			"gpbackup.db-include",
 			"Specific db for collecting metrics. Can be specified several times.",
 		).Default("").PlaceHolder("\"\"").Strings()
-		gpbckpExcludeDb = kingpin.Flag(
+		gpbckpExcludeDB = kingpin.Flag(
 			"gpbackup.db-exclude",
 			"Specific db to exclude from collecting metrics. Can be specified several times.",
 		).Default("").PlaceHolder("\"\"").Strings()
@@ -96,8 +96,8 @@ func main() {
 				"DB", db)
 		}
 	}
-	if strings.Join(*gpbckpExcludeDb, "") != "" {
-		for _, db := range *gpbckpExcludeDb {
+	if strings.Join(*gpbckpExcludeDB, "") != "" {
+		for _, db := range *gpbckpExcludeDB {
 			level.Info(logger).Log(
 				"mgs", "Exclude collecting metrics for specific DB",
 				"DB", db)
