@@ -14,7 +14,11 @@ ARG REPO_BUILD_TAG
 ENV EXPORTER_ENDPOINT="/metrics" \
     EXPORTER_PORT="19854" \
     COLLECT_INTERVAL="600" \
-    HISTORY_FILE=""
+    COLLECT_DEPTH="0" \
+    HISTORY_FILE="" \
+    DB_INCLUDE="" \
+    DB_EXCLUDE="" \
+    BACKUP_TYPE=""
 RUN apk add --no-cache --update \
         ca-certificates \
         bash \
