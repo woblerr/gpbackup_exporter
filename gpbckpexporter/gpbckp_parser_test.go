@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/promlog"
+	"github.com/woblerr/gpbackup_exporter/gpbckpfunc"
 	"github.com/woblerr/gpbackup_exporter/gpbckpstruct"
 )
 
@@ -244,16 +246,16 @@ func TestGetBackupMetrics(t *testing.T) {
 	}
 	templateMetrics := `# HELP gpbackup_backup_deleted_status Backup deleted status.
 # TYPE gpbackup_backup_deleted_status gauge
-gpbackup_backup_deleted_status{backup_type="full",database_name="core",date_deleted="none",object_filtering="none",plugin="none",timestamp="20230118152654"} 0
+gpbackup_backup_deleted_status{backup_type="full",database_name="test",date_deleted="none",object_filtering="none",plugin="none",timestamp="20230118152654"} 0
 # HELP gpbackup_backup_duration_seconds Backup duration.
 # TYPE gpbackup_backup_duration_seconds gauge
-gpbackup_backup_duration_seconds{backup_type="full",database_name="core",object_filtering="none",plugin="none",timestamp="20230118152654"} 2
+gpbackup_backup_duration_seconds{backup_type="full",database_name="test",object_filtering="none",plugin="none",timestamp="20230118152654"} 2
 # HELP gpbackup_backup_info Backup info.
 # TYPE gpbackup_backup_info gauge
-gpbackup_backup_info{backup_dir="/data/backups",backup_type="full",backup_ver="1.26.0",compression_type="gzip",database_name="core",database_ver="6.23.0",object_filtering="none",plugin="none",plugin_ver="none",timestamp="20230118152654",with_statistic="false"} 1
+gpbackup_backup_info{backup_dir="/data/backups",backup_type="full",backup_ver="1.26.0",compression_type="gzip",database_name="test",database_ver="6.23.0",object_filtering="none",plugin="none",plugin_ver="none",timestamp="20230118152654",with_statistic="false"} 1
 # HELP gpbackup_backup_status Backup status.
 # TYPE gpbackup_backup_status gauge
-gpbackup_backup_status{backup_type="full",database_name="core",object_filtering="none",plugin="none",timestamp="20230118152654"} 0
+gpbackup_backup_status{backup_type="full",database_name="test",object_filtering="none",plugin="none",timestamp="20230118152654"} 0
 `
 	tests := []struct {
 		name string
@@ -338,6 +340,99 @@ func TestGetBackupMetricsErrorsAndDebugs(t *testing.T) {
 	}
 }
 
+func TestGetBackupLastMetrics(t *testing.T) {
+	type args struct {
+		lastBackups         lastBackupMap
+		setUpMetricValueFun setUpMetricValueFunType
+		testText            string
+	}
+	templateMetrics := `# HELP gpbackup_backup_since_last_completion_seconds Seconds since the last completed backup.
+# TYPE gpbackup_backup_since_last_completion_seconds gauge
+gpbackup_backup_since_last_completion_seconds{backup_type="data-only",database_name="test"} 7200
+gpbackup_backup_since_last_completion_seconds{backup_type="full",database_name="test"} 18000
+gpbackup_backup_since_last_completion_seconds{backup_type="incremental",database_name="test"} 14400
+gpbackup_backup_since_last_completion_seconds{backup_type="metadata-only",database_name="test"} 10800
+`
+	tests := []struct {
+		name string
+		args args
+	}{
+		{"GetBackupMetricsGood",
+			args{
+				lastBackupMap{
+					"test": backupMap{
+						"full":          returnTimeTime("20230118150000"),
+						"incremental":   returnTimeTime("20230118160000"),
+						"metadata-only": returnTimeTime("20230118170000"),
+						"data-only":     returnTimeTime("20230118180000"),
+					}},
+				setUpMetricValue,
+				templateMetrics,
+			},
+		}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			getBackupLastMetrics(tt.args.lastBackups, templateUnixTime(), tt.args.setUpMetricValueFun, getLogger())
+			reg := prometheus.NewRegistry()
+			reg.MustRegister(
+				gpbckpBackupSinceLastCompletionSecondsMetric,
+			)
+			metricFamily, err := reg.Gather()
+			if err != nil {
+				fmt.Println(err)
+			}
+			out := &bytes.Buffer{}
+			for _, mf := range metricFamily {
+				if _, err := expfmt.MetricFamilyToText(out, mf); err != nil {
+					panic(err)
+				}
+			}
+			if tt.args.testText != out.String() {
+				t.Errorf("\nVariables do not match:\n%s\nwant:\n%s", tt.args.testText, out.String())
+			}
+		})
+	}
+}
+
+func TestGetBackupLastMetricsErrorsAndDebugs(t *testing.T) {
+	type args struct {
+		lastBackups         lastBackupMap
+		setUpMetricValueFun setUpMetricValueFunType
+		errorsCount         int
+		debugsCount         int
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{"GetBackupMetricsError",
+			args{
+				lastBackupMap{
+					"test": backupMap{
+						"full": returnTimeTime("20230118150000"),
+					}}, fakeSetUpMetricValue,
+				1,
+				1,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := &bytes.Buffer{}
+			logger := log.NewLogfmtLogger(out)
+			lc := log.With(logger, level.AllowInfo())
+			getBackupLastMetrics(tt.args.lastBackups, templateUnixTime(), tt.args.setUpMetricValueFun, lc)
+			errorsOutputCount := strings.Count(out.String(), "level=error")
+			debugsOutputCount := strings.Count(out.String(), "level=debug")
+			if tt.args.errorsCount != errorsOutputCount || tt.args.debugsCount != debugsOutputCount {
+				t.Errorf("\nVariables do not match:\nerrors=%d, debugs=%d\nwant:\nerrors=%d, debugs=%d",
+					tt.args.errorsCount, tt.args.debugsCount,
+					errorsOutputCount, debugsOutputCount)
+			}
+		})
+	}
+}
+
 func getLogger() log.Logger {
 	var err error
 	logLevel := &promlog.AllowedLevel{}
@@ -364,7 +459,7 @@ func templateBackupConfig() gpbckpstruct.BackupConfig {
 		BackupVersion:         "1.26.0",
 		Compressed:            true,
 		CompressionType:       "gzip",
-		DatabaseName:          "core",
+		DatabaseName:          "test",
 		DatabaseVersion:       "6.23.0",
 		DataOnly:              false,
 		DateDeleted:           "",
@@ -389,4 +484,20 @@ func templateBackupConfig() gpbckpstruct.BackupConfig {
 		WithStatistics:        false,
 		Status:                "Success",
 	}
+}
+
+//nolint:unparam
+func templateUnixTime() int64 {
+	// Thu Jan 18 2023 20:00:00 UTC
+	var curUnixTime int64 = 1674072000
+	return curUnixTime
+}
+
+func returnTimeTime(sTime string) time.Time {
+	var rTime time.Time
+	rTime, err := time.Parse(gpbckpfunc.Layout, sTime)
+	if err != nil {
+		panic(err)
+	}
+	return rTime
 }

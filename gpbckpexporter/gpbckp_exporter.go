@@ -154,6 +154,7 @@ func ResetMetrics() {
 	gpbckpBackupDataDeletedStatusMetric.Reset()
 	gpbckpBackupInfoMetric.Reset()
 	gpbckpBackupDurationMetric.Reset()
+	gpbckpBackupSinceLastCompletionSecondsMetric.Reset()
 }
 
 func dbNotInExclude(db string, listExclude []string) bool {

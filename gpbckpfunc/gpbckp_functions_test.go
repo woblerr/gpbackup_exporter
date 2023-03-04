@@ -199,7 +199,7 @@ func templateBackupConfig(bType testBackupType, oFiltering testObjectFiltering) 
 		BackupVersion:         "1.26.0",
 		Compressed:            true,
 		CompressionType:       "gzip",
-		DatabaseName:          "core",
+		DatabaseName:          "test",
 		DatabaseVersion:       "6.23.0",
 		DataOnly:              bType.dataOnly,
 		DateDeleted:           "",
