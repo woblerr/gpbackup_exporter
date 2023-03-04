@@ -78,50 +78,54 @@ func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []stri
 				// Like lastbackups["testDB"]["full"] = time
 				lastBackups := make(lastBackupMap)
 				for i := 0; i < len(parseHData.BackupConfigs); i++ {
-					bckpStartTime, err := time.Parse(gpbckpfunc.Layout, parseHData.BackupConfigs[i].Timestamp)
-					if err != nil {
-						level.Error(logger).Log("msg", "Parse backup timestamp value failed", "err", err)
-					}
-					bckpStopTime, err := time.Parse(gpbckpfunc.Layout, parseHData.BackupConfigs[i].EndTime)
-					if err != nil {
-						level.Error(logger).Log("msg", "Parse backup end time value failed", "err", err)
-					}
-					// Only if set correct value for collectDepth.
-					if collectDepth > 0 {
-						// gpbackup_history.yml The file is sorted by timestamp values.
-						// The data of the most recent backup is always located at the beginning of the file.
-						// When Unmarshal, we get a sorted list.
-						// So as soon as we get the first value that is older than collectDepthTime,
-						// the cycle can be braked.
-						// If this behavior ever changes, then this code needs to be refactored.
-						// See https://github.com/greenplum-db/gpbackup/blame/64c06479043d5a41ce4512ba0549483b71824c2a/history/history.go#L103
-						if collectDepthTime.Before(bckpStartTime) {
-							getBackupMetrics(parseHData.BackupConfigs[i], setUpMetricValue, logger)
-						} else {
-							break
+					bckpType := gpbckpfunc.GetBackupType(parseHData.BackupConfigs[i])
+					// Check backup type and compare with backup type filter.
+					if (backupType != "" && backupType == bckpType) || backupType == "" {
+						bckpStartTime, err := time.Parse(gpbckpfunc.Layout, parseHData.BackupConfigs[i].Timestamp)
+						if err != nil {
+							level.Error(logger).Log("msg", "Parse backup timestamp value failed", "err", err)
 						}
-					} else {
-						getBackupMetrics(parseHData.BackupConfigs[i], setUpMetricValue, logger)
-					}
-					if parseHData.BackupConfigs[i].Status == "Success" {
-						// Check specific database key already exist.
-						if dbLastBackups, ok := lastBackups[parseHData.BackupConfigs[i].DatabaseName]; ok {
-							// Check specific backup type key already exist.
-							if _, ok := dbLastBackups[gpbckpfunc.GetBackupType(parseHData.BackupConfigs[i])]; !ok {
-								dbLastBackups[gpbckpfunc.GetBackupType(parseHData.BackupConfigs[i])] = bckpStopTime
+						bckpStopTime, err := time.Parse(gpbckpfunc.Layout, parseHData.BackupConfigs[i].EndTime)
+						if err != nil {
+							level.Error(logger).Log("msg", "Parse backup end time value failed", "err", err)
+						}
+						// Only if set correct value for collectDepth.
+						if collectDepth > 0 {
+							// gpbackup_history.yml The file is sorted by timestamp values.
+							// The data of the most recent backup is always located at the beginning of the file.
+							// When Unmarshal, we get a sorted list.
+							// So as soon as we get the first value that is older than collectDepthTime,
+							// the cycle can be braked.
+							// If this behavior ever changes, then this code needs to be refactored.
+							// See https://github.com/greenplum-db/gpbackup/blame/64c06479043d5a41ce4512ba0549483b71824c2a/history/history.go#L103
+							if collectDepthTime.Before(bckpStartTime) {
+								getBackupMetrics(parseHData.BackupConfigs[i], setUpMetricValue, logger)
+							} else {
+								break
 							}
-							// A small note on the code above.
-							// Since the history file is already sorted, the first occurrence will be the last backup.
-							// However, if sorting is suddenly removed in the future, the code should be something like this:
-							//	if curLastTime, ok := dbLastBackups[gpbckpfunc.GetBackupType(parseHData.BackupConfigs[i])]; ok {
-							//		if curLastTime.Before(bckpStopTime) {
-							//			dbLastBackups[gpbckpfunc.GetBackupType(parseHData.BackupConfigs[i])] = bckpStopTime
-							//		}
-							//	} else {
-							//		dbLastBackups[gpbckpfunc.GetBackupType(parseHData.BackupConfigs[i])] = bckpStopTime
-							//	}
 						} else {
-							lastBackups[parseHData.BackupConfigs[i].DatabaseName] = backupMap{gpbckpfunc.GetBackupType(parseHData.BackupConfigs[i]): bckpStopTime}
+							getBackupMetrics(parseHData.BackupConfigs[i], setUpMetricValue, logger)
+						}
+						if parseHData.BackupConfigs[i].Status == "Success" {
+							// Check specific database key already exist.
+							if dbLastBackups, ok := lastBackups[parseHData.BackupConfigs[i].DatabaseName]; ok {
+								// Check specific backup type key already exist.
+								if _, ok := dbLastBackups[bckpType]; !ok {
+									dbLastBackups[bckpType] = bckpStopTime
+								}
+								// A small note on the code above.
+								// Since the history file is already sorted, the first occurrence will be the last backup.
+								// However, if sorting is suddenly removed in the future, the code should be something like this:
+								//	if curLastTime, ok := dbLastBackups[bckpType]; ok {
+								//		if curLastTime.Before(bckpStopTime) {
+								//			dbLastBackups[bckpType] = bckpStopTime
+								//		}
+								//	} else {
+								//		dbLastBackups[bckpType] = bckpStopTime
+								//	}
+							} else {
+								lastBackups[parseHData.BackupConfigs[i].DatabaseName] = backupMap{bckpType: bckpStopTime}
+							}
 						}
 					}
 				}
