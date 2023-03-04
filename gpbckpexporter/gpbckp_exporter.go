@@ -91,7 +91,7 @@ func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []stri
 						}
 						// Only if set correct value for collectDepth.
 						if collectDepth > 0 {
-							// gpbackup_history.yml The file is sorted by timestamp values.
+							// gpbackup_history.yml file is sorted by timestamp values.
 							// The data of the most recent backup is always located at the beginning of the file.
 							// When Unmarshal, we get a sorted list.
 							// So as soon as we get the first value that is older than collectDepthTime,
