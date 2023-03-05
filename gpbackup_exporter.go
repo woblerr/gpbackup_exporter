@@ -42,7 +42,7 @@ func main() {
 		).Default("0").Int()
 		gpbckpHistoryFilePath = kingpin.Flag(
 			"gpbackup.history-file",
-			"Path to gpbackup_history.yaml",
+			"Path to gpbackup_history.yaml.",
 		).Default("").String()
 		gpbckpIncludeDB = kingpin.Flag(
 			"gpbackup.db-include",
