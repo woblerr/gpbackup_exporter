@@ -244,7 +244,7 @@ func TestGetBackupMetrics(t *testing.T) {
 		setUpMetricValueFun setUpMetricValueFunType
 		testText            string
 	}
-	templateMetrics := `# HELP gpbackup_backup_deleted_status Backup deleted status.
+	templateMetrics := `# HELP gpbackup_backup_deleted_status Backup deletion status.
 # TYPE gpbackup_backup_deleted_status gauge
 gpbackup_backup_deleted_status{backup_type="full",database_name="test",date_deleted="none",object_filtering="none",plugin="none",timestamp="20230118152654"} 0
 # HELP gpbackup_backup_duration_seconds Backup duration.

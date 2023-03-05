@@ -18,7 +18,7 @@ var (
 			"timestamp"})
 	gpbckpBackupDataDeletedStatusMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "gpbackup_backup_deleted_status",
-		Help: "Backup deleted status.",
+		Help: "Backup deletion status.",
 	},
 		[]string{
 			"backup_type",

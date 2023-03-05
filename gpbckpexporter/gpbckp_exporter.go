@@ -51,7 +51,7 @@ func StartPromEndpoint(logger log.Logger) {
 	}(logger)
 }
 
-// GetGPBackupInfo et and parse gpbackup history file
+// GetGPBackupInfo get and parse gpbackup history file
 func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []string, collectDepth int, logger log.Logger) {
 	// To calculate the time elapsed since the last completed backup for specific database.
 	// For all databases values are calculated relative to one value.
