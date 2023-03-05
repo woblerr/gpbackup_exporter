@@ -6,6 +6,7 @@ set -e
 EXPORTER_COMMAND="/gpbackup_exporter \
 --prom.endpoint=${EXPORTER_ENDPOINT} \
 --prom.port=${EXPORTER_PORT} \
+--prom.web-config=${EXPORTER_CONFIG} \
 --collect.interval=${COLLECT_INTERVAL} \
 --collect.depth=${COLLECT_DEPTH} \
 --gpbackup.history-file=${HISTORY_FILE} \
