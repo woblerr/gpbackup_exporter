@@ -19,12 +19,12 @@ test:
 test-e2e:
 	@echo "Run end-to-end tests for $(APP_NAME)"
 	@if [ -n "$(DOCKER_CONTAINER_E2E)" ]; then docker rm -f "$(DOCKER_CONTAINER_E2E)"; fi;
-	DOCKER_BUILDKIT=1 docker build --pull -f e2e_tests/Dockerfile --build-arg BACKREST_VERSION=$(BACKREST_VERSION) --build-arg DOCKER_BACKREST_VERSION=$(DOCKER_BACKREST_VERSION) -t $(APP_NAME)_e2e .
-	$(call e2e_basic)
-	$(call e2e_tls_auth,/e2e_tests/web_config_empty.yml,false,false)
-	$(call e2e_tls_auth,/e2e_tests/web_config_TLS_noAuth.yml,true,false)
-	$(call e2e_tls_auth,/e2e_tests/web_config_TLS_Auth.yml,true,true)
-	$(call e2e_tls_auth,/e2e_tests/web_config_noTLS_Auth.yml,false,true)
+	DOCKER_BUILDKIT=1 docker build --pull -f Dockerfile --build-arg REPO_BUILD_TAG=$(BRANCH)-$(GIT_REV) -t $(APP_NAME)_e2e .
+	$(call e2e_basic,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml)
+	$(call e2e_tls_auth,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_empty.yml,false,false)
+	$(call e2e_tls_auth,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_noAuth.yml,true,false)
+	$(call e2e_tls_auth,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_Auth.yml,true,true)
+	$(call e2e_tls_auth,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_noTLS_Auth.yml,false,true)
 
 .PHONY: build
 build:
@@ -57,7 +57,7 @@ dist:
 docker:
 	@echo "Build $(APP_NAME) docker container"
 	@echo "Version $(BRANCH)-$(GIT_REV)"
-	DOCKER_BUILDKIT=1 docker build --pull -f Dockerfile --build-arg REPO_BUILD_TAG=$(BRANCH)-$(GIT_REV) --build-arg BACKREST_VERSION=$(BACKREST_VERSION) --build-arg DOCKER_BACKREST_VERSION=$(DOCKER_BACKREST_VERSION) -t $(APP_NAME) .
+	DOCKER_BUILDKIT=1 docker build --pull -f Dockerfile --build-arg REPO_BUILD_TAG=$(BRANCH)-$(GIT_REV) -t $(APP_NAME) .
 
 .PHONY: prepare-service
 prepare-service:
@@ -94,15 +94,15 @@ define service-remove
 endef
 
 define e2e_basic
-	docker run -d -p $(HTTP_PORT_E2E):$(HTTP_PORT) --name=$(APP_NAME)_e2e $(APP_NAME)_e2e
+	docker run -d -p $(HTTP_PORT_E2E):$(HTTP_PORT) -v "${1}" --env HISTORY_FILE="${2}" --name=$(APP_NAME)_e2e $(APP_NAME)_e2e
 	@sleep 30
 	$(ROOT_DIR)/e2e_tests/run_e2e.sh $(HTTP_PORT_E2E)
 	docker rm -f $(APP_NAME)_e2e
 endef
 
 define e2e_tls_auth
-	docker run -d -p $(HTTP_PORT_E2E):$(HTTP_PORT) --env EXPORTER_CONFIG="${1}" --name=$(APP_NAME)_e2e $(APP_NAME)_e2e
+	docker run -d -p $(HTTP_PORT_E2E):$(HTTP_PORT)  -v "${1}" --env HISTORY_FILE="${2}"  --env EXPORTER_CONFIG="${3}" --name=$(APP_NAME)_e2e $(APP_NAME)_e2e
 	@sleep 30
-	$(ROOT_DIR)/e2e_tests/run_e2e.sh $(HTTP_PORT_E2E) ${2} ${3}
+	$(ROOT_DIR)/e2e_tests/run_e2e.sh $(HTTP_PORT_E2E) ${4} ${5}
     docker rm -f $(APP_NAME)_e2e
 endef
