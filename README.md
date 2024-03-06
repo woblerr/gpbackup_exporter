@@ -69,13 +69,14 @@ Available configuration flags:
 usage: gpbackup_exporter [<flags>]
 
 Flags:
-  -h, --help                     Show context-sensitive help (also try --help-long and --help-man).
-      --prom.port="19854"        Port for prometheus metrics to listen on.
-      --prom.endpoint="/metrics"  
-                                 Endpoint used for metrics.
-      --prom.web-config=""       [EXPERIMENTAL] Path to config yaml file that can enable TLS or authentication.
+  -h, --[no-]help                Show context-sensitive help (also try --help-long and --help-man).
+      --web.endpoint="/metrics"  Endpoint used for metrics.
+      --web.listen-address=:19854 ...  
+                                 Addresses on which to expose metrics and web interface. Repeatable for multiple addresses.
+      --web.config.file=""       [EXPERIMENTAL] Path to configuration file that can enable TLS or authentication.
       --collect.interval=600     Collecting metrics interval in seconds.
-      --collect.depth=0          Metrics depth collection in days. Metrics for backup older than this interval will not be collected. 0 - disable.
+      --collect.depth=0          Metrics depth collection in days. Metrics for backup older than this interval will not be collected.
+                                 0 - disable.
       --gpbackup.history-file=""  
                                  Path to gpbackup_history.yaml.
       --gpbackup.db-include="" ...  
@@ -114,8 +115,8 @@ Value `0` - disable this functionality.
 
 When `--log.level=debug` is specified - information of values and labels for metrics is printing to the log.
 
-The flag `--prom.web-config` allows to specify the path to the configuration for TLS and/or basic authentication.<br>
-The description of TLS configuration and basic authentication can be found at [exporter-toolkit/web](https://github.com/prometheus/exporter-toolkit/blob/v0.7.3/docs/web-configuration.md).
+The flag `--web.config.file` allows to specify the path to the configuration for TLS and/or basic authentication.<br>
+The description of TLS configuration and basic authentication can be found at [exporter-toolkit/web](https://github.com/prometheus/exporter-toolkit/blob/v0.9.1//docs/web-configuration.md).
 
 ### Building and running docker
 

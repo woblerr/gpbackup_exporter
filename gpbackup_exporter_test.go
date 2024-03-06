@@ -18,7 +18,7 @@ func TestMain(t *testing.T) {
 		t.Errorf("\nGet error during generate random int value:\n%v", err)
 	}
 	port := 50000 + int(n.Int64())
-	os.Args = []string{"gpbackup_exporter", "--prom.port=" + strconv.Itoa(port)}
+	os.Args = []string{"gpbackup_exporter", "--web.listen-address=:" + strconv.Itoa(port)}
 	finished := make(chan struct{})
 	go func() {
 		main()

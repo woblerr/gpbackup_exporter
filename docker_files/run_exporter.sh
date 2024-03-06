@@ -4,9 +4,9 @@ set -e
 
 # Basic command for execute gpbackup_exporter.
 EXPORTER_COMMAND="/gpbackup_exporter \
---prom.endpoint=${EXPORTER_ENDPOINT} \
---prom.port=${EXPORTER_PORT} \
---prom.web-config=${EXPORTER_CONFIG} \
+--web.endpoint=${EXPORTER_ENDPOINT} \
+--web.listen-address=:${EXPORTER_PORT} \
+--web.config.file=${EXPORTER_CONFIG} \
 --collect.interval=${COLLECT_INTERVAL} \
 --collect.depth=${COLLECT_DEPTH} \
 --gpbackup.history-file=${HISTORY_FILE} \
