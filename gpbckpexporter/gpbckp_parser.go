@@ -2,7 +2,7 @@ package gpbckpexporter
 
 import (
 	"errors"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +23,7 @@ type setUpMetricValueFunType func(metric *prometheus.GaugeVec, value float64, la
 type backupMap map[string]time.Time
 type lastBackupMap map[string]backupMap
 
-var execReadFile = ioutil.ReadFile
+var execReadFile = os.ReadFile
 
 func readHistoryFile(filename string) ([]byte, error) {
 	data, err := execReadFile(filename)

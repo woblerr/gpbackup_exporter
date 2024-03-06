@@ -442,9 +442,6 @@ func getLogger() log.Logger {
 	}
 	promlogConfig := &promlog.Config{}
 	promlogConfig.Level = logLevel
-	if err != nil {
-		panic(err)
-	}
 	return promlog.New(promlogConfig)
 }
 

@@ -1,6 +1,6 @@
 ARG REPO_BUILD_TAG="unknown"
 
-FROM golang:1.18-alpine AS builder
+FROM golang:1.21-alpine3.19 AS builder
 ARG REPO_BUILD_TAG
 COPY . /build
 WORKDIR /build
@@ -9,7 +9,7 @@ RUN CGO_ENABLED=0 go build \
         -ldflags "-X main.version=${REPO_BUILD_TAG}" \
         -o gpbackup_exporter gpbackup_exporter.go
 
-FROM alpine:3.17
+FROM alpine:3.19
 ARG REPO_BUILD_TAG
 ENV EXPORTER_ENDPOINT="/metrics" \
     EXPORTER_PORT="19854" \

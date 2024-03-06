@@ -3,25 +3,35 @@ package gpbckpexporter
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/exporter-toolkit/web"
 )
 
 func TestSetPromPortAndPath(t *testing.T) {
 	var (
-		testPort          = "19854"
-		testEndpoint      = "/metrics"
-		testTLSConfigPath = ""
+		testFlagsConfig = web.FlagConfig{
+			WebListenAddresses: &([]string{":9854"}),
+			WebSystemdSocket:   func(i bool) *bool { return &i }(false),
+			WebConfigFile:      func(i string) *string { return &i }(""),
+		}
+		testEndpoint = "/metrics"
 	)
-	SetPromPortAndPath(testPort, testEndpoint, testTLSConfigPath)
-	if testPort != promPort || testEndpoint != promEndpoint || testTLSConfigPath != promTLSConfigPath {
-		t.Errorf("\nVariables do not match,\nport: %s, want: %s;\nendpoint: %s, want: %s;\nconfig: %swant: %s",
-			testPort, promPort,
-			testEndpoint, promEndpoint,
-			testTLSConfigPath, promTLSConfigPath,
+	SetPromPortAndPath(testFlagsConfig, testEndpoint)
+	if testFlagsConfig.WebListenAddresses != webFlagsConfig.WebListenAddresses ||
+		testFlagsConfig.WebSystemdSocket != webFlagsConfig.WebSystemdSocket ||
+		testFlagsConfig.WebConfigFile != webFlagsConfig.WebConfigFile ||
+		testEndpoint != webEndpoint {
+		t.Errorf("\nVariables do not match,\nlistenAddresses: %v, want: %v;\n"+
+			"systemSocket: %v, want: %v;\nwebConfig: %v, want: %v;\nendpoint: %s, want: %s",
+			ptrToVal(testFlagsConfig.WebListenAddresses), ptrToVal(webFlagsConfig.WebListenAddresses),
+			ptrToVal(testFlagsConfig.WebSystemdSocket), ptrToVal(webFlagsConfig.WebSystemdSocket),
+			ptrToVal(testFlagsConfig.WebConfigFile), ptrToVal(webFlagsConfig.WebConfigFile),
+			testEndpoint, webEndpoint,
 		)
 	}
 }
@@ -168,7 +178,7 @@ func TestGetGPBackupInfo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ResetMetrics()
 			execReadFile = fakeReadFile
-			defer func() { execReadFile = ioutil.ReadFile }()
+			defer func() { execReadFile = os.ReadFile }()
 			out := &bytes.Buffer{}
 			lc := log.NewLogfmtLogger(out)
 			GetGPBackupInfo(
@@ -221,5 +231,10 @@ func fakeReadFile(filename string) ([]byte, error) {
 		return []byte{}, errors.New("Error for testing")
 	}
 	buf := bytes.NewBufferString(filename)
-	return ioutil.ReadAll(buf)
+	return io.ReadAll(buf)
+}
+
+// Helper for displaying web.FlagConfig values test messages.
+func ptrToVal[T any](v *T) T {
+	return *v
 }
