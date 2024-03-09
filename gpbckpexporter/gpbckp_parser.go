@@ -2,7 +2,6 @@ package gpbckpexporter
 
 import (
 	"errors"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -20,8 +19,6 @@ type setUpMetricValueFunType func(metric *prometheus.GaugeVec, value float64, la
 
 type backupMap map[string]time.Time
 type lastBackupMap map[string]backupMap
-
-var execReadFile = os.ReadFile
 
 func getExporterMetrics(exporterVer string, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
 	level.Debug(logger).Log(
@@ -260,8 +257,7 @@ func getEmptyLabel(str string) string {
 }
 
 // Get status code about backup deletion status.
-// Based on available statuses from gpbackup_manager utility documentation
-// (https://github.com/greenplum-db/gpdb/blob/98e79490a26d0d9db4c9239ee1c4b33d8af65ec0/gpdb-doc/dita/utility_guide/ref/gpbackup_manager.xml),
+// Based on available statuses from gpbackman utility documentation,
 // but not limited to that.
 //   - 0 - backup still exists;
 //   - 1 - backup was successfully deleted;
@@ -277,13 +273,13 @@ func getDeletedStatusCode(valueDateDeleted string) (string, float64) {
 	case valueDateDeleted == "":
 		dateDeleted = emptyLabel
 		deletedStatus = 0
-	case valueDateDeleted == "In progress":
+	case valueDateDeleted == gpbckpconfig.DateDeletedInProgress:
 		dateDeleted = emptyLabel
 		deletedStatus = 2
-	case valueDateDeleted == "Plugin Backup Delete Failed":
+	case valueDateDeleted == gpbckpconfig.DateDeletedPluginFailed:
 		dateDeleted = emptyLabel
 		deletedStatus = 3
-	case valueDateDeleted == "Local Delete Failed":
+	case valueDateDeleted == gpbckpconfig.DateDeletedLocalFailed:
 		dateDeleted = emptyLabel
 		deletedStatus = 4
 	default:
