@@ -8,12 +8,10 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"gopkg.in/yaml.v3"
 
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/woblerr/gpbackup_exporter/gpbckpfunc"
-	"github.com/woblerr/gpbackup_exporter/gpbckpstruct"
+	"github.com/woblerr/gpbackman/gpbckpconfig"
 )
 
 const emptyLabel = "none"
@@ -24,17 +22,6 @@ type backupMap map[string]time.Time
 type lastBackupMap map[string]backupMap
 
 var execReadFile = os.ReadFile
-
-func readHistoryFile(filename string) ([]byte, error) {
-	data, err := execReadFile(filename)
-	return data, err
-}
-
-func parseResult(output []byte) (gpbckpstruct.History, error) {
-	var hData gpbckpstruct.History
-	err := yaml.Unmarshal(output, &hData)
-	return hData, err
-}
 
 func getExporterMetrics(exporterVer string, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
 	level.Debug(logger).Log(
@@ -70,20 +57,29 @@ func setUpMetricValue(metric *prometheus.GaugeVec, value float64, labels ...stri
 	return nil
 }
 
-func getBackupMetrics(backupData gpbckpstruct.BackupConfig, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
+func getBackupMetrics(backupData gpbckpconfig.BackupConfig, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
 	var (
 		bckpDuration float64
 		err          error
 	)
+
+	bckpType, err := backupData.GetBackupType()
+	if err != nil {
+		level.Error(logger).Log("msg", "Parse backup type value failed", "err", err)
+	}
+	backpObjectFiltering, err := backupData.GetObjectFilteringInfo()
+	if err != nil {
+		level.Error(logger).Log("msg", "Parse object filtering value failed", "err", err)
+	}
 	level.Debug(logger).Log(
 		"msg", "Metric gpbackup_backup_status",
 		"value", getStatusFloat64(backupData.Status),
 		"labels",
 		strings.Join(
 			[]string{
-				gpbckpfunc.GetBackupType(backupData),
+				bckpType,
 				backupData.DatabaseName,
-				getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
+				getEmptyLabel(backpObjectFiltering),
 				getEmptyLabel(backupData.Plugin),
 				backupData.Timestamp,
 			}, ",",
@@ -92,9 +88,9 @@ func getBackupMetrics(backupData gpbckpstruct.BackupConfig, setUpMetricValueFun 
 	err = setUpMetricValueFun(
 		gpbckpBackupStatusMetric,
 		getStatusFloat64(backupData.Status),
-		gpbckpfunc.GetBackupType(backupData),
+		bckpType,
 		backupData.DatabaseName,
-		getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
+		getEmptyLabel(backpObjectFiltering),
 		getEmptyLabel(backupData.Plugin),
 		backupData.Timestamp,
 	)
@@ -111,10 +107,10 @@ func getBackupMetrics(backupData gpbckpstruct.BackupConfig, setUpMetricValueFun 
 		"labels",
 		strings.Join(
 			[]string{
-				gpbckpfunc.GetBackupType(backupData),
+				bckpType,
 				backupData.DatabaseName,
 				bckpDateDeleted,
-				getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
+				getEmptyLabel(backpObjectFiltering),
 				getEmptyLabel(backupData.Plugin),
 				backupData.Timestamp,
 			}, ",",
@@ -123,10 +119,10 @@ func getBackupMetrics(backupData gpbckpstruct.BackupConfig, setUpMetricValueFun 
 	err = setUpMetricValueFun(
 		gpbckpBackupDataDeletedStatusMetric,
 		bckpDeletedStatus,
-		gpbckpfunc.GetBackupType(backupData),
+		bckpType,
 		backupData.DatabaseName,
 		bckpDateDeleted,
-		getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
+		getEmptyLabel(backpObjectFiltering),
 		getEmptyLabel(backupData.Plugin),
 		backupData.Timestamp,
 	)
@@ -144,11 +140,11 @@ func getBackupMetrics(backupData gpbckpstruct.BackupConfig, setUpMetricValueFun 
 			[]string{
 				getEmptyLabel(backupData.BackupDir),
 				backupData.BackupVersion,
-				gpbckpfunc.GetBackupType(backupData),
+				bckpType,
 				getEmptyLabel(backupData.CompressionType),
 				backupData.DatabaseName,
 				backupData.DatabaseVersion,
-				getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
+				getEmptyLabel(backpObjectFiltering),
 				getEmptyLabel(backupData.Plugin),
 				getEmptyLabel(backupData.PluginVersion),
 				backupData.Timestamp,
@@ -161,11 +157,11 @@ func getBackupMetrics(backupData gpbckpstruct.BackupConfig, setUpMetricValueFun 
 		1,
 		getEmptyLabel(backupData.BackupDir),
 		backupData.BackupVersion,
-		gpbckpfunc.GetBackupType(backupData),
+		bckpType,
 		getEmptyLabel(backupData.CompressionType),
 		backupData.DatabaseName,
 		backupData.DatabaseVersion,
-		getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
+		getEmptyLabel(backpObjectFiltering),
 		getEmptyLabel(backupData.Plugin),
 		getEmptyLabel(backupData.PluginVersion),
 		backupData.Timestamp,
@@ -177,7 +173,8 @@ func getBackupMetrics(backupData gpbckpstruct.BackupConfig, setUpMetricValueFun 
 			"err", err,
 		)
 	}
-	bckpDuration, err = gpbckpfunc.GetBackupDuration(backupData.Timestamp, backupData.EndTime)
+
+	bckpDuration, err = backupData.GetBackupDuration()
 	if err != nil {
 		level.Error(logger).Log(
 			"msg", "Failed to parse dates to calculate duration",
@@ -190,10 +187,10 @@ func getBackupMetrics(backupData gpbckpstruct.BackupConfig, setUpMetricValueFun 
 			"labels",
 			strings.Join(
 				[]string{
-					gpbckpfunc.GetBackupType(backupData),
+					bckpType,
 					backupData.DatabaseName,
 					bckpDateDeleted,
-					getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
+					getEmptyLabel(backpObjectFiltering),
 					getEmptyLabel(backupData.Plugin),
 					backupData.Timestamp,
 				}, ",",
@@ -202,9 +199,9 @@ func getBackupMetrics(backupData gpbckpstruct.BackupConfig, setUpMetricValueFun 
 		err = setUpMetricValueFun(
 			gpbckpBackupDurationMetric,
 			bckpDuration,
-			gpbckpfunc.GetBackupType(backupData),
+			bckpType,
 			backupData.DatabaseName,
-			getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
+			getEmptyLabel(backpObjectFiltering),
 			getEmptyLabel(backupData.Plugin),
 			backupData.Timestamp,
 		)

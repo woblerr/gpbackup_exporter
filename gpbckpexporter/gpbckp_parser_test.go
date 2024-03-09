@@ -13,8 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/promlog"
-	"github.com/woblerr/gpbackup_exporter/gpbckpfunc"
-	"github.com/woblerr/gpbackup_exporter/gpbckpstruct"
+	"github.com/woblerr/gpbackman/gpbckpconfig"
 )
 
 func TestGetDeletedStatusCode(t *testing.T) {
@@ -240,7 +239,7 @@ func TestGetExporterInfoErrorsAndDebugs(t *testing.T) {
 // gpbackup version >= 1.23.0
 func TestGetBackupMetrics(t *testing.T) {
 	type args struct {
-		backupData          gpbckpstruct.BackupConfig
+		backupData          gpbckpconfig.BackupConfig
 		setUpMetricValueFun setUpMetricValueFunType
 		testText            string
 	}
@@ -297,7 +296,7 @@ gpbackup_backup_status{backup_type="full",database_name="test",object_filtering=
 
 func TestGetBackupMetricsErrorsAndDebugs(t *testing.T) {
 	type args struct {
-		backupData          gpbckpstruct.BackupConfig
+		backupData          gpbckpconfig.BackupConfig
 		setUpMetricValueFun setUpMetricValueFunType
 		errorsCount         int
 		debugsCount         int
@@ -316,7 +315,7 @@ func TestGetBackupMetricsErrorsAndDebugs(t *testing.T) {
 		},
 		{"GetBackupMetricsErrorGetDurationError",
 			args{
-				gpbckpstruct.BackupConfig{},
+				gpbckpconfig.BackupConfig{},
 				fakeSetUpMetricValue,
 				4,
 				3,
@@ -450,8 +449,8 @@ func fakeSetUpMetricValue(metric *prometheus.GaugeVec, value float64, labels ...
 }
 
 //nolint:unparam
-func templateBackupConfig() gpbckpstruct.BackupConfig {
-	return gpbckpstruct.BackupConfig{
+func templateBackupConfig() gpbckpconfig.BackupConfig {
+	return gpbckpconfig.BackupConfig{
 		BackupDir:             "/data/backups",
 		BackupVersion:         "1.26.0",
 		Compressed:            true,
@@ -473,7 +472,7 @@ func templateBackupConfig() gpbckpstruct.BackupConfig {
 		MetadataOnly:          false,
 		Plugin:                "",
 		PluginVersion:         "",
-		RestorePlan:           []gpbckpstruct.RestorePlanEntry{},
+		RestorePlan:           []gpbckpconfig.RestorePlanEntry{},
 		SingleDataFile:        false,
 		Timestamp:             "20230118152654",
 		EndTime:               "20230118152656",
@@ -492,7 +491,7 @@ func templateUnixTime() int64 {
 
 func returnTimeTime(sTime string) time.Time {
 	var rTime time.Time
-	rTime, err := time.Parse(gpbckpfunc.Layout, sTime)
+	rTime, err := time.Parse(gpbckpconfig.Layout, sTime)
 	if err != nil {
 		panic(err)
 	}

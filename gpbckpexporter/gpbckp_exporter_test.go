@@ -2,8 +2,6 @@ package gpbckpexporter
 
 import (
 	"bytes"
-	"errors"
-	"io"
 	"os"
 	"strings"
 	"testing"
@@ -38,7 +36,7 @@ func TestSetPromPortAndPath(t *testing.T) {
 
 func TestGetGPBackupInfo(t *testing.T) {
 	type args struct {
-		historyFile string
+		historyData string
 		bckpType    string
 		bckpIncl    []string
 		bckpExcl    []string
@@ -119,12 +117,12 @@ func TestGetGPBackupInfo(t *testing.T) {
 		{
 			"FailedDataReturn",
 			args{"return error", "", []string{""}, []string{""}, 0},
-			"level=error msg=\"Read gpbackup history file failed\" err=\"Error for testing\"",
+			"level=error msg=\"Parse YAML failed\" err=\"yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!str `return ...` into gpbckpconfig.History\"",
 		},
 		{
 			"InvalidDataReturn",
 			args{"42", "", []string{""}, []string{""}, 0},
-			"level=error msg=\"Parse YAML failed\" err=\"yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!int `42` into gpbckpstruct.History\"",
+			"level=error msg=\"Parse YAML failed\" err=\"yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!int `42` into gpbckpconfig.History\"",
 		},
 		{
 			"NoDataReturn",
@@ -177,12 +175,15 @@ func TestGetGPBackupInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ResetMetrics()
-			execReadFile = fakeReadFile
-			defer func() { execReadFile = os.ReadFile }()
+			tempFile, err := fakeHistoryFileData(tt.args.historyData)
+			if err != nil {
+				t.Fatalf("Failed to create temp file: %v", err)
+			}
+			defer os.Remove(tempFile.Name())
 			out := &bytes.Buffer{}
 			lc := log.NewLogfmtLogger(out)
 			GetGPBackupInfo(
-				tt.args.historyFile,
+				tempFile.Name(),
 				tt.args.bckpType,
 				tt.args.bckpIncl,
 				tt.args.bckpExcl,
@@ -226,12 +227,15 @@ func TestDBNotInExclude(t *testing.T) {
 	}
 }
 
-func fakeReadFile(filename string) ([]byte, error) {
-	if filename == "return error" {
-		return []byte{}, errors.New("Error for testing")
+func fakeHistoryFileData(text string) (*os.File, error) {
+	tempFile, err := os.CreateTemp("", "gpbackup_history*.yaml")
+	if err != nil {
+		return nil, err
 	}
-	buf := bytes.NewBufferString(filename)
-	return io.ReadAll(buf)
+	if _, err := tempFile.Write([]byte(text)); err != nil {
+		return nil, err
+	}
+	return tempFile, nil
 }
 
 // Helper for displaying web.FlagConfig values test messages.

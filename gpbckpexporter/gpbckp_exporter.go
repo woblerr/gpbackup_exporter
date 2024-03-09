@@ -10,7 +10,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/exporter-toolkit/web"
-	"github.com/woblerr/gpbackup_exporter/gpbckpfunc"
+	"github.com/woblerr/gpbackman/gpbckpconfig"
 )
 
 var (
@@ -67,11 +67,11 @@ func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []stri
 		// Check that database from the include list is not in the exclude list.
 		// If database not set - checking for entry into the exclude list will be performed later.
 		if dbNotInExclude(db, dbExclude) {
-			historyData, err := readHistoryFile(historyFile)
+			historyData, err := gpbckpconfig.ReadHistoryFile(historyFile)
 			if err != nil {
 				level.Error(logger).Log("msg", "Read gpbackup history file failed", "err", err)
 			}
-			parseHData, err := parseResult(historyData)
+			parseHData, err := gpbckpconfig.ParseResult(historyData)
 			if err != nil {
 				level.Error(logger).Log("msg", "Parse YAML failed", "err", err)
 			}
@@ -79,14 +79,17 @@ func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []stri
 				// Like lastbackups["testDB"]["full"] = time
 				lastBackups := make(lastBackupMap)
 				for i := 0; i < len(parseHData.BackupConfigs); i++ {
-					bckpType := gpbckpfunc.GetBackupType(parseHData.BackupConfigs[i])
+					bckpType, err := parseHData.BackupConfigs[i].GetBackupType()
+					if err != nil {
+						level.Error(logger).Log("msg", "Parse backup type value failed", "err", err)
+					}
 					// Check backup type and compare with backup type filter.
 					if (backupType != "" && backupType == bckpType) || backupType == "" {
-						bckpStartTime, err := time.Parse(gpbckpfunc.Layout, parseHData.BackupConfigs[i].Timestamp)
+						bckpStartTime, err := time.Parse(gpbckpconfig.Layout, parseHData.BackupConfigs[i].Timestamp)
 						if err != nil {
 							level.Error(logger).Log("msg", "Parse backup timestamp value failed", "err", err)
 						}
-						bckpStopTime, err := time.Parse(gpbckpfunc.Layout, parseHData.BackupConfigs[i].EndTime)
+						bckpStopTime, err := time.Parse(gpbckpconfig.Layout, parseHData.BackupConfigs[i].EndTime)
 						if err != nil {
 							level.Error(logger).Log("msg", "Parse backup end time value failed", "err", err)
 						}
