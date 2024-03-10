@@ -2,12 +2,10 @@ package gpbckpexporter
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-kit/log"
-
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/woblerr/gpbackman/gpbckpconfig"
@@ -19,25 +17,6 @@ type setUpMetricValueFunType func(metric *prometheus.GaugeVec, value float64, la
 
 type backupMap map[string]time.Time
 type lastBackupMap map[string]backupMap
-
-func getExporterMetrics(exporterVer string, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
-	level.Debug(logger).Log(
-		"msg", "Metric gpbackup_exporter_info",
-		"value", 1,
-		"labels", exporterVer,
-	)
-	err := setUpMetricValueFun(
-		gpbckpExporterInfoMetric,
-		1,
-		exporterVer,
-	)
-	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Metric gpbackup_exporter_info set up failed",
-			"err", err,
-		)
-	}
-}
 
 func setUpMetricValue(metric *prometheus.GaugeVec, value float64, labels ...string) error {
 	metricVec, err := metric.GetMetricWithLabelValues(labels...)
@@ -52,193 +31,6 @@ func setUpMetricValue(metric *prometheus.GaugeVec, value float64, labels ...stri
 	}
 	metricVec.Set(value)
 	return nil
-}
-
-func getBackupMetrics(backupData gpbckpconfig.BackupConfig, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
-	var (
-		bckpDuration float64
-		err          error
-	)
-
-	bckpType, err := backupData.GetBackupType()
-	if err != nil {
-		level.Error(logger).Log("msg", "Parse backup type value failed", "err", err)
-	}
-	backpObjectFiltering, err := backupData.GetObjectFilteringInfo()
-	if err != nil {
-		level.Error(logger).Log("msg", "Parse object filtering value failed", "err", err)
-	}
-	level.Debug(logger).Log(
-		"msg", "Metric gpbackup_backup_status",
-		"value", getStatusFloat64(backupData.Status),
-		"labels",
-		strings.Join(
-			[]string{
-				bckpType,
-				backupData.DatabaseName,
-				getEmptyLabel(backpObjectFiltering),
-				getEmptyLabel(backupData.Plugin),
-				backupData.Timestamp,
-			}, ",",
-		),
-	)
-	err = setUpMetricValueFun(
-		gpbckpBackupStatusMetric,
-		getStatusFloat64(backupData.Status),
-		bckpType,
-		backupData.DatabaseName,
-		getEmptyLabel(backpObjectFiltering),
-		getEmptyLabel(backupData.Plugin),
-		backupData.Timestamp,
-	)
-	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Metric gpbackup_backup_status set up failed",
-			"err", err,
-		)
-	}
-	bckpDateDeleted, bckpDeletedStatus := getDeletedStatusCode(backupData.DateDeleted)
-	level.Debug(logger).Log(
-		"msg", "Metric gpbackup_backup_deleted_status",
-		"value", bckpDeletedStatus,
-		"labels",
-		strings.Join(
-			[]string{
-				bckpType,
-				backupData.DatabaseName,
-				bckpDateDeleted,
-				getEmptyLabel(backpObjectFiltering),
-				getEmptyLabel(backupData.Plugin),
-				backupData.Timestamp,
-			}, ",",
-		),
-	)
-	err = setUpMetricValueFun(
-		gpbckpBackupDataDeletedStatusMetric,
-		bckpDeletedStatus,
-		bckpType,
-		backupData.DatabaseName,
-		bckpDateDeleted,
-		getEmptyLabel(backpObjectFiltering),
-		getEmptyLabel(backupData.Plugin),
-		backupData.Timestamp,
-	)
-	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Metric gpbackup_backup_deleted_status set up failed",
-			"err", err,
-		)
-	}
-	level.Debug(logger).Log(
-		"msg", "Metric gpbackup_backup_info",
-		"value", 1,
-		"labels",
-		strings.Join(
-			[]string{
-				getEmptyLabel(backupData.BackupDir),
-				backupData.BackupVersion,
-				bckpType,
-				getEmptyLabel(backupData.CompressionType),
-				backupData.DatabaseName,
-				backupData.DatabaseVersion,
-				getEmptyLabel(backpObjectFiltering),
-				getEmptyLabel(backupData.Plugin),
-				getEmptyLabel(backupData.PluginVersion),
-				backupData.Timestamp,
-				strconv.FormatBool(backupData.WithStatistics),
-			}, ",",
-		),
-	)
-	err = setUpMetricValueFun(
-		gpbckpBackupInfoMetric,
-		1,
-		getEmptyLabel(backupData.BackupDir),
-		backupData.BackupVersion,
-		bckpType,
-		getEmptyLabel(backupData.CompressionType),
-		backupData.DatabaseName,
-		backupData.DatabaseVersion,
-		getEmptyLabel(backpObjectFiltering),
-		getEmptyLabel(backupData.Plugin),
-		getEmptyLabel(backupData.PluginVersion),
-		backupData.Timestamp,
-		strconv.FormatBool(backupData.WithStatistics),
-	)
-	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Metric gpbackup_backup_info set up failed",
-			"err", err,
-		)
-	}
-
-	bckpDuration, err = backupData.GetBackupDuration()
-	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Failed to parse dates to calculate duration",
-			"err", err,
-		)
-	} else {
-		level.Debug(logger).Log(
-			"msg", "Metric gpbackup_backup_duration_seconds",
-			"value", bckpDuration,
-			"labels",
-			strings.Join(
-				[]string{
-					bckpType,
-					backupData.DatabaseName,
-					bckpDateDeleted,
-					getEmptyLabel(backpObjectFiltering),
-					getEmptyLabel(backupData.Plugin),
-					backupData.Timestamp,
-				}, ",",
-			),
-		)
-		err = setUpMetricValueFun(
-			gpbckpBackupDurationMetric,
-			bckpDuration,
-			bckpType,
-			backupData.DatabaseName,
-			getEmptyLabel(backpObjectFiltering),
-			getEmptyLabel(backupData.Plugin),
-			backupData.Timestamp,
-		)
-		if err != nil {
-			level.Error(logger).Log(
-				"msg", "Metric gpbackup_backup_info set up failed",
-				"err", err,
-			)
-		}
-	}
-}
-
-func getBackupLastMetrics(lastBackups lastBackupMap, currentUnixTime int64, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
-	for db, bckps := range lastBackups {
-		for bckpType, endTime := range bckps {
-			level.Debug(logger).Log(
-				"msg", "Metric gpbackup_backup_since_last_completion_seconds",
-				"value", time.Unix(currentUnixTime, 0).Sub(endTime).Seconds(),
-				"labels",
-				strings.Join(
-					[]string{
-						bckpType,
-						db,
-					}, ",",
-				),
-			)
-			err := setUpMetricValueFun(
-				gpbckpBackupSinceLastCompletionSecondsMetric,
-				time.Unix(currentUnixTime, 0).Sub(endTime).Seconds(),
-				bckpType,
-				db,
-			)
-			if err != nil {
-				level.Error(logger).Log(
-					"msg", "Metric gpbackup_backup_since_last_completion_seconds set up failed",
-					"err", err,
-				)
-			}
-		}
-	}
 }
 
 // Convert backup status to float64.
@@ -287,4 +79,27 @@ func getDeletedStatusCode(valueDateDeleted string) (string, float64) {
 		deletedStatus = 1
 	}
 	return dateDeleted, deletedStatus
+}
+
+// Reset all metrics.
+func resetMetrics() {
+	resetBackupMetrics()
+	resetLastBackupMetrics()
+}
+
+func setUpMetric(metric *prometheus.GaugeVec, metricName string, value float64, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger, labels ...string) {
+	level.Debug(logger).Log(
+		"msg", "Set up metric",
+		"metric", metricName,
+		"value", value,
+		"labels", strings.Join(labels, ","),
+	)
+	err := setUpMetricValueFun(metric, value, labels...)
+	if err != nil {
+		level.Error(logger).Log(
+			"msg", "Metric set up failed",
+			"metric", metricName,
+			"err", err,
+		)
+	}
 }

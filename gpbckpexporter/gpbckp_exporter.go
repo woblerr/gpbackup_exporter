@@ -75,6 +75,8 @@ func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []stri
 			if err != nil {
 				level.Error(logger).Log("msg", "Parse YAML failed", "err", err)
 			}
+			// Reset metrics.
+			resetMetrics()
 			if len(parseHData.BackupConfigs) != 0 {
 				// Like lastbackups["testDB"]["full"] = time
 				lastBackups := make(lastBackupMap)
@@ -150,15 +152,6 @@ func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []stri
 // GetExporterInfo set exporter info metric
 func GetExporterInfo(exporterVersion string, logger log.Logger) {
 	getExporterMetrics(exporterVersion, setUpMetricValue, logger)
-}
-
-// ResetMetrics reset metrics
-func ResetMetrics() {
-	gpbckpBackupStatusMetric.Reset()
-	gpbckpBackupDataDeletedStatusMetric.Reset()
-	gpbckpBackupInfoMetric.Reset()
-	gpbckpBackupDurationMetric.Reset()
-	gpbckpBackupSinceLastCompletionSecondsMetric.Reset()
 }
 
 func dbNotInExclude(db string, listExclude []string) bool {

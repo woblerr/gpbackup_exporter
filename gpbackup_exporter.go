@@ -114,8 +114,6 @@ func main() {
 	// Set up exporter info metric.
 	gpbckpexporter.GetExporterInfo(version, logger)
 	for {
-		// Reset metrics.
-		gpbckpexporter.ResetMetrics()
 		// Get information form gpbackup_history.yaml.
 		gpbckpexporter.GetGPBackupInfo(
 			*gpbckpHistoryFilePath,

@@ -112,7 +112,7 @@ func TestGetGPBackupInfo(t *testing.T) {
 				[]string{""},
 				0,
 			},
-			"level=debug msg=\"Metric gpbackup_backup_status\" value=0 labels=full,test,none,none,20230118152654",
+			"level=debug msg=\"Set up metric\" metric=gpbackup_backup_status value=0 labels=metadata-only,test,none,none,20230118162654",
 		},
 		{
 			"FailedDataReturn",
@@ -174,7 +174,7 @@ func TestGetGPBackupInfo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ResetMetrics()
+			resetMetrics()
 			tempFile, err := fakeHistoryFileData(tt.args.historyData)
 			if err != nil {
 				t.Fatalf("Failed to create temp file: %v", err)
