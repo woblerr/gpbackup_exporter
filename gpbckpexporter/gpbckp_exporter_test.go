@@ -41,6 +41,7 @@ func TestGetGPBackupInfo(t *testing.T) {
 		bckpIncl    []string
 		bckpExcl    []string
 		cDepth      int
+		hDB         bool
 	}
 	tests := []struct {
 		name     string
@@ -111,22 +112,23 @@ func TestGetGPBackupInfo(t *testing.T) {
 				[]string{""},
 				[]string{""},
 				0,
+				false,
 			},
 			"level=debug msg=\"Set up metric\" metric=gpbackup_backup_status value=0 labels=metadata-only,test,none,none,20230118162654",
 		},
 		{
 			"FailedDataReturn",
-			args{"return error", "", []string{""}, []string{""}, 0},
+			args{"return error", "", []string{""}, []string{""}, 0, false},
 			"level=error msg=\"Parse YAML failed\" err=\"yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!str `return ...` into gpbckpconfig.History\"",
 		},
 		{
 			"InvalidDataReturn",
-			args{"42", "", []string{""}, []string{""}, 0},
+			args{"42", "", []string{""}, []string{""}, 0, false},
 			"level=error msg=\"Parse YAML failed\" err=\"yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!int `42` into gpbckpconfig.History\"",
 		},
 		{
 			"NoDataReturn",
-			args{"", "", []string{""}, []string{""}, 0},
+			args{"", "", []string{""}, []string{""}, 0, false},
 			"level=warn msg=\"No backup data returned\"",
 		},
 		{
@@ -163,12 +165,14 @@ func TestGetGPBackupInfo(t *testing.T) {
 				"",
 				[]string{""},
 				[]string{""},
-				14},
+				14,
+				false,
+			},
 			"level=warn msg=\"No succeed backups\"",
 		},
 		{
 			"DBinIncludeAndExclude",
-			args{"", "", []string{"test"}, []string{"test"}, 0},
+			args{"", "", []string{"test"}, []string{"test"}, 0, false},
 			"level=warn msg=\"DB is specified in include and exclude lists\" DB=test",
 		},
 	}
@@ -188,40 +192,11 @@ func TestGetGPBackupInfo(t *testing.T) {
 				tt.args.bckpIncl,
 				tt.args.bckpExcl,
 				tt.args.cDepth,
+				tt.args.hDB,
 				lc,
 			)
 			if !strings.Contains(out.String(), tt.testText) {
 				t.Errorf("\nVariable do not match:\n%s\nwant:\n%s", tt.testText, out.String())
-			}
-		})
-	}
-}
-
-func TestDBNotInExclude(t *testing.T) {
-	type args struct {
-		db          string
-		listExclude []string
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			"Include",
-			args{"test", []string{"test"}},
-			false,
-		},
-		{
-			"Exclude",
-			args{"test", []string{"demo"}},
-			true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := dbNotInExclude(tt.args.db, tt.args.listExclude); got != tt.want {
-				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
 			}
 		})
 	}

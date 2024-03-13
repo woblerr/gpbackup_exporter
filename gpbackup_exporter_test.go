@@ -18,7 +18,12 @@ func TestMain(t *testing.T) {
 		t.Errorf("\nGet error during generate random int value:\n%v", err)
 	}
 	port := 50000 + int(n.Int64())
-	os.Args = []string{"gpbackup_exporter", "--web.listen-address=:" + strconv.Itoa(port)}
+	tempFile, err := os.CreateTemp("", "gpbackup_history*.db")
+	if err != nil {
+		t.Errorf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tempFile.Name())
+	os.Args = []string{"gpbackup_exporter", "--web.listen-address=:" + strconv.Itoa(port), "--gpbackup.history-file=" + tempFile.Name()}
 	finished := make(chan struct{})
 	go func() {
 		main()

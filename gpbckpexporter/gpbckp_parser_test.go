@@ -213,3 +213,33 @@ func returnTimeTime(sTime string) time.Time {
 	}
 	return rTime
 }
+
+func TestDBNotInExclude(t *testing.T) {
+	type args struct {
+		db          string
+		listExclude []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			"Include",
+			args{"test", []string{"test"}},
+			false,
+		},
+		{
+			"Exclude",
+			args{"test", []string{"demo"}},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := dbNotInExclude(tt.args.db, tt.args.listExclude); got != tt.want {
+				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
+			}
+		})
+	}
+}

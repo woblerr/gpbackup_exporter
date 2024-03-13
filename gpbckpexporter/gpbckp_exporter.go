@@ -3,7 +3,6 @@ package gpbckpexporter
 import (
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -53,7 +52,8 @@ func StartPromEndpoint(logger log.Logger) {
 }
 
 // GetGPBackupInfo get and parse gpbackup history file
-func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []string, collectDepth int, logger log.Logger) {
+func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []string, collectDepth int, historyDB bool, logger log.Logger) {
+	var parseHData gpbckpconfig.History
 	// To calculate the time elapsed since the last completed backup for specific database.
 	// For all databases values are calculated relative to one value.
 	currentTime := time.Now()
@@ -67,13 +67,40 @@ func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []stri
 		// Check that database from the include list is not in the exclude list.
 		// If database not set - checking for entry into the exclude list will be performed later.
 		if dbNotInExclude(db, dbExclude) {
-			historyData, err := gpbckpconfig.ReadHistoryFile(historyFile)
-			if err != nil {
-				level.Error(logger).Log("msg", "Read gpbackup history file failed", "err", err)
-			}
-			parseHData, err := gpbckpconfig.ParseResult(historyData)
-			if err != nil {
-				level.Error(logger).Log("msg", "Parse YAML failed", "err", err)
+			if historyDB {
+				hDB, err := gpbckpconfig.OpenHistoryDB(historyFile)
+				if err != nil {
+					level.Error(logger).Log("msg", "Open gpbackup history db failed", "err", err)
+				}
+				defer func() {
+					closeErr := hDB.Close()
+					if closeErr != nil {
+						level.Error(logger).Log("msg", "Close gpbackup history db failed", "err", err)
+					}
+				}()
+				// Get only active and deleted backups. Failed backups are ignored.
+				backupList, err := gpbckpconfig.GetBackupNamesDB(true, false, hDB)
+				if err != nil {
+					level.Error(logger).Log("msg", "Get backups from history db failed", "err", err)
+				}
+				// Get data for selected backups.
+				for _, backupName := range backupList {
+					backupData, err := gpbckpconfig.GetBackupDataDB(backupName, hDB)
+					if err != nil {
+						level.Error(logger).Log("msg", "Get backup data from history db failed", "err", err)
+						break
+					}
+					parseHData.BackupConfigs = append(parseHData.BackupConfigs, backupData)
+				}
+			} else {
+				historyData, err := gpbckpconfig.ReadHistoryFile(historyFile)
+				if err != nil {
+					level.Error(logger).Log("msg", "Read gpbackup history file failed", "err", err)
+				}
+				parseHData, err = gpbckpconfig.ParseResult(historyData)
+				if err != nil {
+					level.Error(logger).Log("msg", "Parse YAML failed", "err", err)
+				}
 			}
 			// Reset metrics.
 			resetMetrics()
@@ -152,17 +179,4 @@ func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []stri
 // GetExporterInfo set exporter info metric
 func GetExporterInfo(exporterVersion string, logger log.Logger) {
 	getExporterMetrics(exporterVersion, setUpMetricValue, logger)
-}
-
-func dbNotInExclude(db string, listExclude []string) bool {
-	// Check that exclude list is empty.
-	// If so, no excluding databases are set during startup.
-	if strings.Join(listExclude, "") != "" {
-		for _, val := range listExclude {
-			if val == db {
-				return false
-			}
-		}
-	}
-	return true
 }

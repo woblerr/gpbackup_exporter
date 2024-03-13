@@ -103,3 +103,16 @@ func setUpMetric(metric *prometheus.GaugeVec, metricName string, value float64, 
 		)
 	}
 }
+
+func dbNotInExclude(db string, listExclude []string) bool {
+	// Check that exclude list is empty.
+	// If so, no excluding databases are set during startup.
+	if strings.Join(listExclude, "") != "" {
+		for _, val := range listExclude {
+			if val == db {
+				return false
+			}
+		}
+	}
+	return true
+}
