@@ -72,12 +72,6 @@ func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []stri
 				if err != nil {
 					level.Error(logger).Log("msg", "Open gpbackup history db failed", "err", err)
 				}
-				defer func() {
-					closeErr := hDB.Close()
-					if closeErr != nil {
-						level.Error(logger).Log("msg", "Close gpbackup history db failed", "err", err)
-					}
-				}()
 				// Get only active and deleted backups. Failed backups are ignored.
 				backupList, err := gpbckpconfig.GetBackupNamesDB(true, false, hDB)
 				if err != nil {
@@ -91,6 +85,10 @@ func GetGPBackupInfo(historyFile, backupType string, dbInclude, dbExclude []stri
 						break
 					}
 					parseHData.BackupConfigs = append(parseHData.BackupConfigs, backupData)
+				}
+				errClose := hDB.Close()
+				if errClose != nil {
+					level.Error(logger).Log("msg", "Close gpbackup history db failed", "err", errClose)
 				}
 			} else {
 				historyData, err := gpbckpconfig.ReadHistoryFile(historyFile)
