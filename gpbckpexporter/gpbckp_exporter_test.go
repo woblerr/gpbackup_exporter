@@ -41,7 +41,6 @@ func TestGetGPBackupInfo(t *testing.T) {
 		bckpIncl    []string
 		bckpExcl    []string
 		cDepth      int
-		hDB         bool
 	}
 	tests := []struct {
 		name     string
@@ -79,7 +78,6 @@ func TestGetGPBackupInfo(t *testing.T) {
   withoutglobals: false
   withstatistics: false
   status: Success
-  backupconfigs:
 - backupdir: "/data/backups"
   backupversion: 1.26.0
   compressed: true
@@ -112,23 +110,26 @@ func TestGetGPBackupInfo(t *testing.T) {
 				[]string{""},
 				[]string{""},
 				0,
-				false,
 			},
-			"level=debug msg=\"Set up metric\" metric=gpbackup_backup_status value=0 labels=metadata-only,test,none,none,20230118162654",
+			`level=debug msg="Set up metric" metric=gpbackup_exporter_status value=1 labels=all-databases
+level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=full,test,none,none,20230118152654
+level=debug msg="Set up metric" metric=gpbackup_backup_deleted_status value=0 labels=full,test,none,none,none,20230118152654
+level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.26.0,full,gzip,test,6.23.0,none,none,none,20230118152654,false
+level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=full,test,20230118152656,none,none,20230118152654
+level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=metadata-only,test,none,none,20230118162654
+level=debug msg="Set up metric" metric=gpbackup_backup_deleted_status value=0 labels=metadata-only,test,none,none,none,20230118162654
+level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.26.0,metadata-only,gzip,test,6.23.0,none,none,none,20230118162654,false
+level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=metadata-only,test,20230118162656,none,none,20230118162654
+`,
 		},
 		{
 			"FailedDataReturn",
-			args{"return error", "", []string{""}, []string{""}, 0, false},
+			args{"return error", "", []string{""}, []string{""}, 0},
 			"level=error msg=\"Parse YAML failed\" err=\"yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!str `return ...` into gpbckpconfig.History\"",
 		},
 		{
-			"InvalidDataReturn",
-			args{"42", "", []string{""}, []string{""}, 0, false},
-			"level=error msg=\"Parse YAML failed\" err=\"yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!int `42` into gpbckpconfig.History\"",
-		},
-		{
 			"NoDataReturn",
-			args{"", "", []string{""}, []string{""}, 0, false},
+			args{"", "", []string{""}, []string{""}, 0},
 			"level=warn msg=\"No backup data returned\"",
 		},
 		{
@@ -166,15 +167,53 @@ func TestGetGPBackupInfo(t *testing.T) {
 				[]string{""},
 				[]string{""},
 				14,
-				false,
 			},
 			"level=warn msg=\"No succeed backups\"",
 		},
 		{
 			"DBinIncludeAndExclude",
-			args{"", "", []string{"test"}, []string{"test"}, 0, false},
+			args{"", "", []string{"test"}, []string{"test"}, 0},
 			"level=warn msg=\"DB is specified in include and exclude lists\" DB=test",
 		},
+		{
+			"ErrorsInParseValues",
+			// Set dataonly: true, incremental:true and metadataonly: true, that's invalid.
+			args{`backupconfigs:
+- backupdir: "/data/backups"
+  backupversion: 1.26.0
+  compressed: true
+  compressiontype: gzip
+  databasename: test
+  databaseversion: 6.23.0
+  dataonly: true
+  datedeleted: ""
+  excluderelations: []
+  excludeschemafiltered: false
+  excludeschemas: []
+  excludetablefiltered: false
+  includerelations: []
+  includeschemafiltered: false
+  includeschemas: []
+  includetablefiltered: false
+  incremental: true
+  leafpartitiondata: true
+  metadataonly: true
+  plugin: ""
+  pluginversion: ""
+  restoreplan: []
+  singledatafile: false
+  timestamp: "test"
+  endtime: "test"
+  withoutglobals: false
+  withstatistics: false
+  status: Success`,
+				"",
+				[]string{""},
+				[]string{""},
+				0,
+			},
+			`level=error msg="Parse backup timestamp value failed" err="parsing time \"test\" as \"20060102150405\": cannot parse \"test\" as \"2006\""
+`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -192,7 +231,6 @@ func TestGetGPBackupInfo(t *testing.T) {
 				tt.args.bckpIncl,
 				tt.args.bckpExcl,
 				tt.args.cDepth,
-				tt.args.hDB,
 				lc,
 			)
 			if !strings.Contains(out.String(), tt.testText) {

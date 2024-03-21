@@ -47,6 +47,7 @@ gpbackup_backup_status{backup_type="full",database_name="test",object_filtering=
 		}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			resetBackupMetrics()
 			getBackupMetrics(tt.args.backupData, tt.args.setUpMetricValueFun, getLogger())
 			reg := prometheus.NewRegistry()
 			reg.MustRegister(
@@ -116,6 +117,7 @@ func TestGetBackupMetricsErrorsAndDebugs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			resetBackupMetrics()
 			out := &bytes.Buffer{}
 			logger := log.NewLogfmtLogger(out)
 			lc := log.With(logger, level.AllowInfo())

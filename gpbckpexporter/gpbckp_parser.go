@@ -2,6 +2,8 @@ package gpbckpexporter
 
 import (
 	"errors"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -31,21 +33,6 @@ func setUpMetricValue(metric *prometheus.GaugeVec, value float64, labels ...stri
 	}
 	metricVec.Set(value)
 	return nil
-}
-
-// Convert backup status to float64.
-func getStatusFloat64(valueStatus string) float64 {
-	if valueStatus == "Failure" {
-		return 1
-	}
-	return 0
-}
-
-func getEmptyLabel(str string) string {
-	if str == "" {
-		return emptyLabel
-	}
-	return str
 }
 
 // Get status code about backup deletion status.
@@ -85,6 +72,7 @@ func getDeletedStatusCode(valueDateDeleted string) (string, float64) {
 func resetMetrics() {
 	resetBackupMetrics()
 	resetLastBackupMetrics()
+	resetExporterMetrics()
 }
 
 func setUpMetric(metric *prometheus.GaugeVec, metricName string, value float64, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger, labels ...string) {
@@ -115,4 +103,76 @@ func dbNotInExclude(db string, listExclude []string) bool {
 		}
 	}
 	return true
+}
+
+// Get and parse data from history database:
+//   - file with extension .db (sqlite, after gpbackup 1.29.0);
+//   - file with extension .yaml (before gpbackup 1.29.0);
+//
+// Returns parsed data or error.
+func parseBackupData(historyFile string, logger log.Logger) (gpbckpconfig.History, error) {
+	var parseHData gpbckpconfig.History
+	hFileExt := filepath.Ext(historyFile)
+	switch hFileExt {
+	case ".yaml":
+		return getDataFromHistoryFile(historyFile, logger)
+	case ".db":
+		return getDataFromHistoryDB(historyFile, logger)
+	default:
+		return parseHData, errors.New("file has an extension other than yaml or db (sqlite)")
+	}
+}
+
+func getDataFromHistoryFile(historyFile string, logger log.Logger) (gpbckpconfig.History, error) {
+	var hData gpbckpconfig.History
+	historyData, err := gpbckpconfig.ReadHistoryFile(historyFile)
+	if err != nil {
+		level.Error(logger).Log("msg", "Read gpbackup history file failed", "err", err)
+		return hData, err
+	}
+	hData, err = gpbckpconfig.ParseResult(historyData)
+	if err != nil {
+		level.Error(logger).Log("msg", "Parse YAML failed", "err", err)
+		return hData, err
+	}
+	return hData, nil
+}
+
+func getDataFromHistoryDB(historyFile string, logger log.Logger) (gpbckpconfig.History, error) {
+	var hData gpbckpconfig.History
+	hDB, err := gpbckpconfig.OpenHistoryDB(historyFile)
+	if err != nil {
+		level.Error(logger).Log("msg", "Open gpbackup history db failed", "err", err)
+		return hData, err
+	}
+	defer func() {
+		errClose := hDB.Close()
+		if errClose != nil {
+			level.Error(logger).Log("msg", "Close gpbackup history db failed", "err", errClose)
+		}
+	}()
+	// Get only active and deleted backups. Failed backups are ignored.
+	backupList, err := gpbckpconfig.GetBackupNamesDB(true, false, hDB)
+	if err != nil {
+		level.Error(logger).Log("msg", "Get backups from history db failed", "err", err)
+		return hData, err
+	}
+	// Get data for selected backups.
+	for _, backupName := range backupList {
+		backupData, err := gpbckpconfig.GetBackupDataDB(backupName, hDB)
+		if err != nil {
+			level.Error(logger).Log("msg", "Get backup data from history db failed", "err", err)
+			return hData, err
+		}
+		hData.BackupConfigs = append(hData.BackupConfigs, backupData)
+	}
+	// Sort backups.
+	// Since both database formats (yaml and sqlite) are supported simultaneously,
+	// it is necessary to sort the result by field Timestamp.
+	// Similar to how it is done for yaml format.
+	// When switching to sqlite format only, this code will become irrelevant.
+	sort.Slice(hData.BackupConfigs, func(i, j int) bool {
+		return hData.BackupConfigs[i].Timestamp > hData.BackupConfigs[j].Timestamp
+	})
+	return hData, nil
 }

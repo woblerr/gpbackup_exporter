@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -113,14 +112,6 @@ func main() {
 		"endpoint", *webPath,
 		"config.file", *webAdditionalToolkitFlags.WebConfigFile,
 	)
-	// Check history file type.
-	// This code will become not actual after full switch to sqlite history file format
-	historyDB, err := checkHistoryFileType(*gpbckpHistoryFilePath)
-	if err != nil {
-		level.Error(logger).Log("msg", "Check gpbackup history file format failed", "err", err)
-		// Immediately exit.
-		os.Exit(1)
-	}
 	// Start exporter.
 	gpbckpexporter.StartPromEndpoint(logger)
 	// Set up exporter info metric.
@@ -133,32 +124,9 @@ func main() {
 			*gpbckpIncludeDB,
 			*gpbckpExcludeDB,
 			*collectionDepth,
-			historyDB,
 			logger,
 		)
 		// Sleep for 'collection.interval' seconds.
 		time.Sleep(time.Duration(*collectionInterval) * time.Second)
-	}
-}
-
-// Check history db file extension is:
-//   - gpbackup_history.db (sqlite, after gpbackup 1.29.0);
-//   - gpbackup_history.yaml (before gpbackup 1.29.0);
-//
-// Returns:
-//   - true, if file extension is db;
-//   - false, if file extension is yaml.
-//   - error, in other cases.
-//
-// Check only file extension, not content or name.
-func checkHistoryFileType(filePath string) (bool, error) {
-	hFileExt := filepath.Ext(filePath)
-	switch hFileExt {
-	case ".db":
-		return true, nil
-	case ".yaml":
-		return false, nil
-	default:
-		return false, errors.New("file extension is not db or yaml")
 	}
 }

@@ -91,13 +91,13 @@ func getBackupMetrics(backupData gpbckpconfig.BackupConfig, setUpMetricValueFun 
 	setUpMetric(
 		gpbckpBackupStatusMetric,
 		"gpbackup_backup_status",
-		getStatusFloat64(backupData.Status),
+		convertStatusFloat64(backupData.Status),
 		setUpMetricValueFun,
 		logger,
 		bckpType,
 		backupData.DatabaseName,
-		getEmptyLabel(backpObjectFiltering),
-		getEmptyLabel(backupData.Plugin),
+		convertEmptyLabel(backpObjectFiltering),
+		convertEmptyLabel(backupData.Plugin),
 		backupData.Timestamp,
 	)
 	// Backup deletion status.
@@ -110,8 +110,8 @@ func getBackupMetrics(backupData gpbckpconfig.BackupConfig, setUpMetricValueFun 
 		bckpType,
 		backupData.DatabaseName,
 		bckpDateDeleted,
-		getEmptyLabel(backpObjectFiltering),
-		getEmptyLabel(backupData.Plugin),
+		convertEmptyLabel(backpObjectFiltering),
+		convertEmptyLabel(backupData.Plugin),
 		backupData.Timestamp,
 	)
 	// Backup info.
@@ -121,15 +121,15 @@ func getBackupMetrics(backupData gpbckpconfig.BackupConfig, setUpMetricValueFun 
 		1,
 		setUpMetricValueFun,
 		logger,
-		getEmptyLabel(backupData.BackupDir),
+		convertEmptyLabel(backupData.BackupDir),
 		backupData.BackupVersion,
 		bckpType,
-		getEmptyLabel(backupData.CompressionType),
+		convertEmptyLabel(backupData.CompressionType),
 		backupData.DatabaseName,
 		backupData.DatabaseVersion,
-		getEmptyLabel(backpObjectFiltering),
-		getEmptyLabel(backupData.Plugin),
-		getEmptyLabel(backupData.PluginVersion),
+		convertEmptyLabel(backpObjectFiltering),
+		convertEmptyLabel(backupData.Plugin),
+		convertEmptyLabel(backupData.PluginVersion),
 		backupData.Timestamp,
 		strconv.FormatBool(backupData.WithStatistics),
 	)
@@ -143,9 +143,9 @@ func getBackupMetrics(backupData gpbckpconfig.BackupConfig, setUpMetricValueFun 
 		bckpType,
 		backupData.DatabaseName,
 		// End time may be not set, if backup in progress.
-		getEmptyLabel(backupData.EndTime),
-		getEmptyLabel(backpObjectFiltering),
-		getEmptyLabel(backupData.Plugin),
+		convertEmptyLabel(backupData.EndTime),
+		convertEmptyLabel(backpObjectFiltering),
+		convertEmptyLabel(backupData.Plugin),
 		backupData.Timestamp,
 	)
 }

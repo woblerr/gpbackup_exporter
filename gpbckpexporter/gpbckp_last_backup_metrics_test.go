@@ -44,6 +44,7 @@ gpbackup_backup_since_last_completion_seconds{backup_type="metadata-only",databa
 		}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			resetLastBackupMetrics()
 			getBackupLastMetrics(tt.args.lastBackups, templateUnixTime(), tt.args.setUpMetricValueFun, getLogger())
 			reg := prometheus.NewRegistry()
 			reg.MustRegister(
@@ -90,6 +91,7 @@ func TestGetBackupLastMetricsErrorsAndDebugs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			resetLastBackupMetrics()
 			out := &bytes.Buffer{}
 			logger := log.NewLogfmtLogger(out)
 			lc := log.With(logger, level.AllowInfo())
