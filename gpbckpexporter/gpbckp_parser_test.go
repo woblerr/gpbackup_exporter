@@ -2,6 +2,8 @@ package gpbckpexporter
 
 import (
 	"errors"
+	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -179,6 +181,54 @@ func TestDBNotInExclude(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := dbNotInExclude(tt.args.db, tt.args.listExclude); got != tt.want {
+				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
+			}
+		})
+	}
+}
+
+// Test only function logic.
+func TestParseBackupData(t *testing.T) {
+	type args struct {
+		historyFile string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    gpbckpconfig.History
+		wantErr bool
+	}{
+		{
+			name:    "Test yaml file",
+			args:    args{historyFile: "test*.yaml"},
+			want:    gpbckpconfig.History{},
+			wantErr: false,
+		},
+		{
+			name:    "Test db file",
+			args:    args{historyFile: "test*.db"},
+			want:    gpbckpconfig.History{},
+			wantErr: true,
+		},
+		{
+			name:    "test unknown file extension",
+			args:    args{historyFile: "test*.txt"},
+			want:    gpbckpconfig.History{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempFile, err := os.CreateTemp("", tt.args.historyFile)
+			if err != nil {
+				t.Fatalf("Failed to create temp file: %v", err)
+			}
+			defer os.Remove(tempFile.Name())
+			got, err := parseBackupData(tempFile.Name(), getLogger())
+			if (err != nil) != tt.wantErr {
+				t.Errorf("\nVariables do not match:\n%v\nwantErrText:\n%v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
 			}
 		})
