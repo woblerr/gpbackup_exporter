@@ -151,8 +151,8 @@ func getDataFromHistoryDB(historyFile string, logger log.Logger) (gpbckpconfig.H
 			level.Error(logger).Log("msg", "Close gpbackup history db failed", "err", errClose)
 		}
 	}()
-	// Get only active and deleted backups. Failed backups are ignored.
-	backupList, err := gpbckpconfig.GetBackupNamesDB(true, false, hDB)
+	// Get all backups: active, deleted and failed.
+	backupList, err := gpbckpconfig.GetBackupNamesDB(true, true, hDB)
 	if err != nil {
 		level.Error(logger).Log("msg", "Get backups from history db failed", "err", err)
 		return hData, err
