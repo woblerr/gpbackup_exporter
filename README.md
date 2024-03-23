@@ -261,7 +261,7 @@ rpm -ql gpbackup_exporter
 /usr/bin/gpbackup_exporter
 ```
 
-After installation RPM/DEB package, you need to set correct path to `gpbackup_history.yaml` in `/etc/systemd/system/gpbackup_exporter.service`.
+After installation RPM/DEB package, you need to set correct path to `gpbackup_history.db`/`gpbackup_history.yaml` in `/etc/systemd/system/gpbackup_exporter.service`.
 
 
 ### Running tests
