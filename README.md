@@ -4,53 +4,36 @@
 [![Coverage Status](https://coveralls.io/repos/github/woblerr/gpbackup_exporter/badge.svg?branch=master)](https://coveralls.io/github/woblerr/gpbackup_exporter?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/woblerr/gpbackup_exporter)](https://goreportcard.com/report/github.com/woblerr/gpbackup_exporter)
 
-Prometheus exporter for collecting metrics from [gpbackup](https://github.com/greenplum-db/gpbackup) history file `gpbackup_history.yaml`.
+Prometheus exporter for collecting metrics from [gpbackup](https://github.com/greenplum-db/gpbackup) history file `gpbackup_history.db`/`gpbackup_history.yaml`.
 
-By default, the metrics are collected for all databases and backups in history file. You need to run exporter or Docker image on the same host where is `gpbackup_history.yaml` file located (Greenplum Master host).
+By default, the metrics are collected for all databases and backups in history file. You need to run exporter or Docker image on the same host where is `gpbackup_history.db`/`gpbackup_history.yaml` file located (Greenplum Master host).
 
 ## Collected metrics
+### Backup metrics
+| Metric | Description |  Labels | Additional Info |
+| ----------- | ------------------ | ------------- | --------------- |
+| `gpbackup_backup_status` | backup status | backup_type, database_name, object_filtering, plugin, timestamp | Values description:<br> `0` - success,<br> `1` - failure.|
+| `gpbackup_backup_deletion_status` | backup deletion status | backup_type, database_name, date_deleted, object_filtering, plugin, timestamp | Values description:<br> `0` - backup still exists,<br> `1` - backup was successfully deleted,<br> `2` - the deletion is in progress,<br> `3` - last delete attempt failed to delete backup from plugin storage,<br> `4` - last delete attempt failed to delete backup from local storage.|
+| `gpbackup_backup_info` | backup info | backup_dir, backup_ver, backup_type, compression_type, database_name, database_ver, object_filtering, plugin, plugin_ver, timestamp, with_statistic | Values description:<br> `1` - info about backup is exist.|
+| `gpbackup_backup_duration_seconds` | backup duration in seconds| backup_type, database_name, object_filtering, plugin, timestamp ||
 
-The metrics provided by exporter.
+### Last backup metrics
+| Metric | Description |  Labels | Additional Info |
+| ----------- | ------------------ | ------------- | --------------- |
+| `gpbackup_backup_since_last_completion_seconds`| seconds since the last completed backup | backup_type, database_name ||
 
-* `gpbackup_backup_status` - backup status.
+### Exporter metrics
 
-    Labels: backup_type, database_name, object_filtering, plugin, timestamp.
+| Metric | Description |  Labels | Additional Info |
+| ----------- | ------------------ | ------------- | --------------- |
+| `gpbackup_exporter_info` | information about gpbackup exporter | version | |
+| `gpbackup_exporter_status` | gpbackup exporter get data status | database_name | Values description:<br> `0` - errors occurred when fetching information from history database,<br> `1` - information successfully fetched from history database. |
 
-    Values description:
-     - `0` - success,
-     - `1` - failure.
+### Additional description of metrics
 
-* `gpbackup_backup_deletion_status` - backup deletion status.
-
-    Labels: backup_type, database_name, date_deleted, object_filtering, plugin, timestamp.
-
-    Values description:
-
-    - `0` - backup still exists,
-    - `1` - backup was successfully deleted,
-    - `2` - the deletion is in progress,
-    - `3` - last delete attempt failed to delete backup from plugin storage,
-    - `4` - last delete attempt failed to delete backup from local storage.
-
-* `gpbackup_backup_info` - backup info.
-
-    Labels: backup_dir, backup_ver, backup_type, compression_type, database_name, database_ver, object_filtering, plugin, plugin_ver, timestamp, with_statistic.
-
-    Values description:
-     - `1` - info about backup is exist.
-
-* `gpbackup_backup_duration_seconds` - backup duration in seconds.
-
-    Labels: backup_type, database_name, object_filtering, plugin, timestamp.
-
-* `gpbackup_backup_since_last_completion_seconds` - Seconds since the last completed backup.
-
-    Labels: backup_type, database_name.
-
-
-* `gpbackup_exporter_info` - information about gpbackup exporter.
-
-    Labels: version.
+For `gpbackup_exporter_status` metric the following logic is applied:
+* if the information is collected for all available databases, the `database_name` label value will be `all-databases`;
+* otherwise, the database name will be set.
 
 ## Getting Started
 ### Building and running
@@ -75,10 +58,9 @@ Flags:
                                  Addresses on which to expose metrics and web interface. Repeatable for multiple addresses.
       --web.config.file=""       [EXPERIMENTAL] Path to configuration file that can enable TLS or authentication.
       --collect.interval=600     Collecting metrics interval in seconds.
-      --collect.depth=0          Metrics depth collection in days. Metrics for backup older than this interval will not be collected.
-                                 0 - disable.
+      --collect.depth=0          Metrics depth collection in days. Metrics for backup older than this interval will not be collected. 0 - disable.
       --gpbackup.history-file=""  
-                                 Path to gpbackup_history.yaml.
+                                 Path to gpbackup_history.db or gpbackup_history.yaml.
       --gpbackup.db-include="" ...  
                                  Specific db for collecting metrics. Can be specified several times.
       --gpbackup.db-exclude="" ...  
@@ -90,7 +72,7 @@ Flags:
 
 #### Additional description of flags.
 
-It's necessary to specify the `gpbackup_history.yaml` file location via `--gpbackup.history-file` flag.
+It's necessary to specify the `gpbackup_history.db` or `gpbackup_history.yaml` file location via `--gpbackup.history-file` flag.
 
 Custom database for collecting metrics can be specified via `--gpbackup.db-include` flag. You can specify several databases.<br>
 For example, `--gpbackup.db-include=demo1 --gpbackup.db-include=demo2`.<br>
@@ -279,7 +261,7 @@ rpm -ql gpbackup_exporter
 /usr/bin/gpbackup_exporter
 ```
 
-After installation RPM/DEB package, you need to set correct path to `gpbackup_history.yaml` in `/etc/systemd/system/gpbackup_exporter.service`.
+After installation RPM/DEB package, you need to set correct path to `gpbackup_history.db`/`gpbackup_history.yaml` in `/etc/systemd/system/gpbackup_exporter.service`.
 
 
 ### Running tests

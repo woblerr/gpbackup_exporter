@@ -4,7 +4,8 @@ FROM golang:1.21-alpine3.19 AS builder
 ARG REPO_BUILD_TAG
 COPY . /build
 WORKDIR /build
-RUN CGO_ENABLED=0 go build \
+RUN apk add --no-cache --update build-base \
+    && CGO_ENABLED=1 go build \
         -mod=vendor -trimpath \
         -ldflags "-X main.version=${REPO_BUILD_TAG}" \
         -o gpbackup_exporter gpbackup_exporter.go

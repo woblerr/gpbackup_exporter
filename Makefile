@@ -20,6 +20,7 @@ test-e2e:
 	@echo "Run end-to-end tests for $(APP_NAME)"
 	@if [ -n "$(DOCKER_CONTAINER_E2E)" ]; then docker rm -f "$(DOCKER_CONTAINER_E2E)"; fi;
 	DOCKER_BUILDKIT=1 docker build --pull -f Dockerfile --build-arg REPO_BUILD_TAG=$(BRANCH)-$(GIT_REV) -t $(APP_NAME)_e2e .
+	$(call e2e_basic,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.db)
 	$(call e2e_basic,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml)
 	$(call e2e_tls_auth,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_empty.yml,false,false)
 	$(call e2e_tls_auth,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_noAuth.yml,true,false)
@@ -30,19 +31,19 @@ test-e2e:
 build:
 	@echo "Build $(APP_NAME)"
 	@make test
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=vendor -trimpath -ldflags "-X main.version=$(BRANCH)-$(GIT_REV)" -o $(APP_NAME) $(APP_NAME).go
+	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -mod=vendor -trimpath -ldflags "-X main.version=$(BRANCH)-$(GIT_REV)" -o $(APP_NAME) $(APP_NAME).go
 
 .PHONY: build-arm
 build-arm:
 	@echo "Build $(APP_NAME)"
 	@make test
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -mod=vendor -trimpath -ldflags "-X main.version=$(BRANCH)-$(GIT_REV)" -o $(APP_NAME) $(APP_NAME).go
+	CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -mod=vendor -trimpath -ldflags "-X main.version=$(BRANCH)-$(GIT_REV)" -o $(APP_NAME) $(APP_NAME).go
 
 .PHONY: build-darwin
 build-darwin:
 	@echo "Build $(APP_NAME)"
 	@make test
-	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -mod=vendor -trimpath -ldflags "-X main.version=$(BRANCH)-$(GIT_REV)" -o $(APP_NAME) $(APP_NAME).go
+	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -mod=vendor -trimpath -ldflags "-X main.version=$(BRANCH)-$(GIT_REV)" -o $(APP_NAME) $(APP_NAME).go
 
 .PHONY: dist
 dist:

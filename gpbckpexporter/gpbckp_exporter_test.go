@@ -2,8 +2,6 @@ package gpbckpexporter
 
 import (
 	"bytes"
-	"errors"
-	"io"
 	"os"
 	"strings"
 	"testing"
@@ -38,7 +36,7 @@ func TestSetPromPortAndPath(t *testing.T) {
 
 func TestGetGPBackupInfo(t *testing.T) {
 	type args struct {
-		historyFile string
+		historyData string
 		bckpType    string
 		bckpIncl    []string
 		bckpExcl    []string
@@ -80,7 +78,6 @@ func TestGetGPBackupInfo(t *testing.T) {
   withoutglobals: false
   withstatistics: false
   status: Success
-  backupconfigs:
 - backupdir: "/data/backups"
   backupversion: 1.26.0
   compressed: true
@@ -114,17 +111,21 @@ func TestGetGPBackupInfo(t *testing.T) {
 				[]string{""},
 				0,
 			},
-			"level=debug msg=\"Metric gpbackup_backup_status\" value=0 labels=full,test,none,none,20230118152654",
+			`level=debug msg="Set up metric" metric=gpbackup_exporter_status value=1 labels=all-databases
+level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=full,test,none,none,20230118152654
+level=debug msg="Set up metric" metric=gpbackup_backup_deleted_status value=0 labels=full,test,none,none,none,20230118152654
+level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.26.0,full,gzip,test,6.23.0,none,none,none,20230118152654,false
+level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=full,test,20230118152656,none,none,20230118152654
+level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=metadata-only,test,none,none,20230118162654
+level=debug msg="Set up metric" metric=gpbackup_backup_deleted_status value=0 labels=metadata-only,test,none,none,none,20230118162654
+level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.26.0,metadata-only,gzip,test,6.23.0,none,none,none,20230118162654,false
+level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=metadata-only,test,20230118162656,none,none,20230118162654
+`,
 		},
 		{
 			"FailedDataReturn",
 			args{"return error", "", []string{""}, []string{""}, 0},
-			"level=error msg=\"Read gpbackup history file failed\" err=\"Error for testing\"",
-		},
-		{
-			"InvalidDataReturn",
-			args{"42", "", []string{""}, []string{""}, 0},
-			"level=error msg=\"Parse YAML failed\" err=\"yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!int `42` into gpbckpstruct.History\"",
+			"level=error msg=\"Parse YAML failed\" err=\"yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!str `return ...` into gpbckpconfig.History\"",
 		},
 		{
 			"NoDataReturn",
@@ -165,7 +166,8 @@ func TestGetGPBackupInfo(t *testing.T) {
 				"",
 				[]string{""},
 				[]string{""},
-				14},
+				14,
+			},
 			"level=warn msg=\"No succeed backups\"",
 		},
 		{
@@ -173,16 +175,58 @@ func TestGetGPBackupInfo(t *testing.T) {
 			args{"", "", []string{"test"}, []string{"test"}, 0},
 			"level=warn msg=\"DB is specified in include and exclude lists\" DB=test",
 		},
+		{
+			"ErrorsInParseValues",
+			// Set dataonly: true, incremental:true and metadataonly: true, that's invalid.
+			args{`backupconfigs:
+- backupdir: "/data/backups"
+  backupversion: 1.26.0
+  compressed: true
+  compressiontype: gzip
+  databasename: test
+  databaseversion: 6.23.0
+  dataonly: true
+  datedeleted: ""
+  excluderelations: []
+  excludeschemafiltered: false
+  excludeschemas: []
+  excludetablefiltered: false
+  includerelations: []
+  includeschemafiltered: false
+  includeschemas: []
+  includetablefiltered: false
+  incremental: true
+  leafpartitiondata: true
+  metadataonly: true
+  plugin: ""
+  pluginversion: ""
+  restoreplan: []
+  singledatafile: false
+  timestamp: "test"
+  endtime: "test"
+  withoutglobals: false
+  withstatistics: false
+  status: Success`,
+				"",
+				[]string{""},
+				[]string{""},
+				0,
+			},
+			`level=error msg="Parse backup timestamp value failed" err="parsing time \"test\" as \"20060102150405\": cannot parse \"test\" as \"2006\""
+`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ResetMetrics()
-			execReadFile = fakeReadFile
-			defer func() { execReadFile = os.ReadFile }()
+			resetMetrics()
+			tempFile, err := fakeHistoryFileData(tt.args.historyData)
+			if err != nil {
+				t.Fatalf("Failed to create temp file: %v", err)
+			}
+			defer os.Remove(tempFile.Name())
 			out := &bytes.Buffer{}
 			lc := log.NewLogfmtLogger(out)
 			GetGPBackupInfo(
-				tt.args.historyFile,
+				tempFile.Name(),
 				tt.args.bckpType,
 				tt.args.bckpIncl,
 				tt.args.bckpExcl,
@@ -196,42 +240,15 @@ func TestGetGPBackupInfo(t *testing.T) {
 	}
 }
 
-func TestDBNotInExclude(t *testing.T) {
-	type args struct {
-		db          string
-		listExclude []string
+func fakeHistoryFileData(text string) (*os.File, error) {
+	tempFile, err := os.CreateTemp("", "gpbackup_history*.yaml")
+	if err != nil {
+		return nil, err
 	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			"Include",
-			args{"test", []string{"test"}},
-			false,
-		},
-		{
-			"Exclude",
-			args{"test", []string{"demo"}},
-			true,
-		},
+	if _, err := tempFile.Write([]byte(text)); err != nil {
+		return nil, err
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := dbNotInExclude(tt.args.db, tt.args.listExclude); got != tt.want {
-				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
-			}
-		})
-	}
-}
-
-func fakeReadFile(filename string) ([]byte, error) {
-	if filename == "return error" {
-		return []byte{}, errors.New("Error for testing")
-	}
-	buf := bytes.NewBufferString(filename)
-	return io.ReadAll(buf)
+	return tempFile, nil
 }
 
 // Helper for displaying web.FlagConfig values test messages.

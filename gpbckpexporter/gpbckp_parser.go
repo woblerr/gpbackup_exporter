@@ -2,18 +2,15 @@ package gpbckpexporter
 
 import (
 	"errors"
-	"os"
-	"strconv"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/go-kit/log"
-	"gopkg.in/yaml.v3"
-
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/woblerr/gpbackup_exporter/gpbckpfunc"
-	"github.com/woblerr/gpbackup_exporter/gpbckpstruct"
+	"github.com/woblerr/gpbackman/gpbckpconfig"
 )
 
 const emptyLabel = "none"
@@ -22,38 +19,6 @@ type setUpMetricValueFunType func(metric *prometheus.GaugeVec, value float64, la
 
 type backupMap map[string]time.Time
 type lastBackupMap map[string]backupMap
-
-var execReadFile = os.ReadFile
-
-func readHistoryFile(filename string) ([]byte, error) {
-	data, err := execReadFile(filename)
-	return data, err
-}
-
-func parseResult(output []byte) (gpbckpstruct.History, error) {
-	var hData gpbckpstruct.History
-	err := yaml.Unmarshal(output, &hData)
-	return hData, err
-}
-
-func getExporterMetrics(exporterVer string, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
-	level.Debug(logger).Log(
-		"msg", "Metric gpbackup_exporter_info",
-		"value", 1,
-		"labels", exporterVer,
-	)
-	err := setUpMetricValueFun(
-		gpbckpExporterInfoMetric,
-		1,
-		exporterVer,
-	)
-	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Metric gpbackup_exporter_info set up failed",
-			"err", err,
-		)
-	}
-}
 
 func setUpMetricValue(metric *prometheus.GaugeVec, value float64, labels ...string) error {
 	metricVec, err := metric.GetMetricWithLabelValues(labels...)
@@ -70,201 +35,8 @@ func setUpMetricValue(metric *prometheus.GaugeVec, value float64, labels ...stri
 	return nil
 }
 
-func getBackupMetrics(backupData gpbckpstruct.BackupConfig, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
-	var (
-		bckpDuration float64
-		err          error
-	)
-	level.Debug(logger).Log(
-		"msg", "Metric gpbackup_backup_status",
-		"value", getStatusFloat64(backupData.Status),
-		"labels",
-		strings.Join(
-			[]string{
-				gpbckpfunc.GetBackupType(backupData),
-				backupData.DatabaseName,
-				getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
-				getEmptyLabel(backupData.Plugin),
-				backupData.Timestamp,
-			}, ",",
-		),
-	)
-	err = setUpMetricValueFun(
-		gpbckpBackupStatusMetric,
-		getStatusFloat64(backupData.Status),
-		gpbckpfunc.GetBackupType(backupData),
-		backupData.DatabaseName,
-		getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
-		getEmptyLabel(backupData.Plugin),
-		backupData.Timestamp,
-	)
-	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Metric gpbackup_backup_status set up failed",
-			"err", err,
-		)
-	}
-	bckpDateDeleted, bckpDeletedStatus := getDeletedStatusCode(backupData.DateDeleted)
-	level.Debug(logger).Log(
-		"msg", "Metric gpbackup_backup_deleted_status",
-		"value", bckpDeletedStatus,
-		"labels",
-		strings.Join(
-			[]string{
-				gpbckpfunc.GetBackupType(backupData),
-				backupData.DatabaseName,
-				bckpDateDeleted,
-				getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
-				getEmptyLabel(backupData.Plugin),
-				backupData.Timestamp,
-			}, ",",
-		),
-	)
-	err = setUpMetricValueFun(
-		gpbckpBackupDataDeletedStatusMetric,
-		bckpDeletedStatus,
-		gpbckpfunc.GetBackupType(backupData),
-		backupData.DatabaseName,
-		bckpDateDeleted,
-		getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
-		getEmptyLabel(backupData.Plugin),
-		backupData.Timestamp,
-	)
-	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Metric gpbackup_backup_deleted_status set up failed",
-			"err", err,
-		)
-	}
-	level.Debug(logger).Log(
-		"msg", "Metric gpbackup_backup_info",
-		"value", 1,
-		"labels",
-		strings.Join(
-			[]string{
-				getEmptyLabel(backupData.BackupDir),
-				backupData.BackupVersion,
-				gpbckpfunc.GetBackupType(backupData),
-				getEmptyLabel(backupData.CompressionType),
-				backupData.DatabaseName,
-				backupData.DatabaseVersion,
-				getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
-				getEmptyLabel(backupData.Plugin),
-				getEmptyLabel(backupData.PluginVersion),
-				backupData.Timestamp,
-				strconv.FormatBool(backupData.WithStatistics),
-			}, ",",
-		),
-	)
-	err = setUpMetricValueFun(
-		gpbckpBackupInfoMetric,
-		1,
-		getEmptyLabel(backupData.BackupDir),
-		backupData.BackupVersion,
-		gpbckpfunc.GetBackupType(backupData),
-		getEmptyLabel(backupData.CompressionType),
-		backupData.DatabaseName,
-		backupData.DatabaseVersion,
-		getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
-		getEmptyLabel(backupData.Plugin),
-		getEmptyLabel(backupData.PluginVersion),
-		backupData.Timestamp,
-		strconv.FormatBool(backupData.WithStatistics),
-	)
-	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Metric gpbackup_backup_info set up failed",
-			"err", err,
-		)
-	}
-	bckpDuration, err = gpbckpfunc.GetBackupDuration(backupData.Timestamp, backupData.EndTime)
-	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Failed to parse dates to calculate duration",
-			"err", err,
-		)
-	} else {
-		level.Debug(logger).Log(
-			"msg", "Metric gpbackup_backup_duration_seconds",
-			"value", bckpDuration,
-			"labels",
-			strings.Join(
-				[]string{
-					gpbckpfunc.GetBackupType(backupData),
-					backupData.DatabaseName,
-					bckpDateDeleted,
-					getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
-					getEmptyLabel(backupData.Plugin),
-					backupData.Timestamp,
-				}, ",",
-			),
-		)
-		err = setUpMetricValueFun(
-			gpbckpBackupDurationMetric,
-			bckpDuration,
-			gpbckpfunc.GetBackupType(backupData),
-			backupData.DatabaseName,
-			getEmptyLabel(gpbckpfunc.GetObjectFilteringInfo(backupData)),
-			getEmptyLabel(backupData.Plugin),
-			backupData.Timestamp,
-		)
-		if err != nil {
-			level.Error(logger).Log(
-				"msg", "Metric gpbackup_backup_info set up failed",
-				"err", err,
-			)
-		}
-	}
-}
-
-func getBackupLastMetrics(lastBackups lastBackupMap, currentUnixTime int64, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
-	for db, bckps := range lastBackups {
-		for bckpType, endTime := range bckps {
-			level.Debug(logger).Log(
-				"msg", "Metric gpbackup_backup_since_last_completion_seconds",
-				"value", time.Unix(currentUnixTime, 0).Sub(endTime).Seconds(),
-				"labels",
-				strings.Join(
-					[]string{
-						bckpType,
-						db,
-					}, ",",
-				),
-			)
-			err := setUpMetricValueFun(
-				gpbckpBackupSinceLastCompletionSecondsMetric,
-				time.Unix(currentUnixTime, 0).Sub(endTime).Seconds(),
-				bckpType,
-				db,
-			)
-			if err != nil {
-				level.Error(logger).Log(
-					"msg", "Metric gpbackup_backup_since_last_completion_seconds set up failed",
-					"err", err,
-				)
-			}
-		}
-	}
-}
-
-// Convert backup status to float64.
-func getStatusFloat64(valueStatus string) float64 {
-	if valueStatus == "Failure" {
-		return 1
-	}
-	return 0
-}
-
-func getEmptyLabel(str string) string {
-	if str == "" {
-		return emptyLabel
-	}
-	return str
-}
-
 // Get status code about backup deletion status.
-// Based on available statuses from gpbackup_manager utility documentation
-// (https://github.com/greenplum-db/gpdb/blob/98e79490a26d0d9db4c9239ee1c4b33d8af65ec0/gpdb-doc/dita/utility_guide/ref/gpbackup_manager.xml),
+// Based on available statuses from gpbackman utility documentation,
 // but not limited to that.
 //   - 0 - backup still exists;
 //   - 1 - backup was successfully deleted;
@@ -280,13 +52,13 @@ func getDeletedStatusCode(valueDateDeleted string) (string, float64) {
 	case valueDateDeleted == "":
 		dateDeleted = emptyLabel
 		deletedStatus = 0
-	case valueDateDeleted == "In progress":
+	case valueDateDeleted == gpbckpconfig.DateDeletedInProgress:
 		dateDeleted = emptyLabel
 		deletedStatus = 2
-	case valueDateDeleted == "Plugin Backup Delete Failed":
+	case valueDateDeleted == gpbckpconfig.DateDeletedPluginFailed:
 		dateDeleted = emptyLabel
 		deletedStatus = 3
-	case valueDateDeleted == "Local Delete Failed":
+	case valueDateDeleted == gpbckpconfig.DateDeletedLocalFailed:
 		dateDeleted = emptyLabel
 		deletedStatus = 4
 	default:
@@ -294,4 +66,113 @@ func getDeletedStatusCode(valueDateDeleted string) (string, float64) {
 		deletedStatus = 1
 	}
 	return dateDeleted, deletedStatus
+}
+
+// Reset all metrics.
+func resetMetrics() {
+	resetBackupMetrics()
+	resetLastBackupMetrics()
+	resetExporterMetrics()
+}
+
+func setUpMetric(metric *prometheus.GaugeVec, metricName string, value float64, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger, labels ...string) {
+	level.Debug(logger).Log(
+		"msg", "Set up metric",
+		"metric", metricName,
+		"value", value,
+		"labels", strings.Join(labels, ","),
+	)
+	err := setUpMetricValueFun(metric, value, labels...)
+	if err != nil {
+		level.Error(logger).Log(
+			"msg", "Metric set up failed",
+			"metric", metricName,
+			"err", err,
+		)
+	}
+}
+
+func dbNotInExclude(db string, listExclude []string) bool {
+	// Check that exclude list is empty.
+	// If so, no excluding databases are set during startup.
+	if strings.Join(listExclude, "") != "" {
+		for _, val := range listExclude {
+			if val == db {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// Get and parse data from history database:
+//   - file with extension .db (sqlite, after gpbackup 1.29.0);
+//   - file with extension .yaml (before gpbackup 1.29.0);
+//
+// Returns parsed data or error.
+func parseBackupData(historyFile string, logger log.Logger) (gpbckpconfig.History, error) {
+	var parseHData gpbckpconfig.History
+	hFileExt := filepath.Ext(historyFile)
+	switch hFileExt {
+	case ".yaml":
+		return getDataFromHistoryFile(historyFile, logger)
+	case ".db":
+		return getDataFromHistoryDB(historyFile, logger)
+	default:
+		return parseHData, errors.New("file has an extension other than yaml or db (sqlite)")
+	}
+}
+
+func getDataFromHistoryFile(historyFile string, logger log.Logger) (gpbckpconfig.History, error) {
+	var hData gpbckpconfig.History
+	historyData, err := gpbckpconfig.ReadHistoryFile(historyFile)
+	if err != nil {
+		level.Error(logger).Log("msg", "Read gpbackup history file failed", "err", err)
+		return hData, err
+	}
+	hData, err = gpbckpconfig.ParseResult(historyData)
+	if err != nil {
+		level.Error(logger).Log("msg", "Parse YAML failed", "err", err)
+		return hData, err
+	}
+	return hData, nil
+}
+
+func getDataFromHistoryDB(historyFile string, logger log.Logger) (gpbckpconfig.History, error) {
+	var hData gpbckpconfig.History
+	hDB, err := gpbckpconfig.OpenHistoryDB(historyFile)
+	if err != nil {
+		level.Error(logger).Log("msg", "Open gpbackup history db failed", "err", err)
+		return hData, err
+	}
+	defer func() {
+		errClose := hDB.Close()
+		if errClose != nil {
+			level.Error(logger).Log("msg", "Close gpbackup history db failed", "err", errClose)
+		}
+	}()
+	// Get all backups: active, deleted and failed.
+	backupList, err := gpbckpconfig.GetBackupNamesDB(true, true, hDB)
+	if err != nil {
+		level.Error(logger).Log("msg", "Get backups from history db failed", "err", err)
+		return hData, err
+	}
+	// Get data for selected backups.
+	for _, backupName := range backupList {
+		backupData, err := gpbckpconfig.GetBackupDataDB(backupName, hDB)
+		if err != nil {
+			level.Error(logger).Log("msg", "Get backup data from history db failed", "err", err)
+			return hData, err
+		}
+		hData.BackupConfigs = append(hData.BackupConfigs, backupData)
+	}
+	// Sort backups.
+	// Since both database formats (yaml and sqlite) are supported simultaneously,
+	// it is necessary to sort the result by field Timestamp.
+	// Similar to how it is done for yaml format.
+	// When switching to sqlite format only, this code will become irrelevant.
+	sort.Slice(hData.BackupConfigs, func(i, j int) bool {
+		return hData.BackupConfigs[i].Timestamp > hData.BackupConfigs[j].Timestamp
+	})
+	return hData, nil
 }
