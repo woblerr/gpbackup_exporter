@@ -14,5 +14,11 @@ EXPORTER_COMMAND="/gpbackup_exporter \
 --gpbackup.db-exclude=${DB_EXCLUDE} \
 --gpbackup.backup-type=${BACKUP_TYPE}"
 
+# Check variable for enabling collecting metrics for deleted backups.
+[ "${COLLECT_DELETED}" == "true" ] &&  EXPORTER_COMMAND="${EXPORTER_COMMAND} --gpbackup.collect-deleted"
+
+# Check variable for enabling collecting metrics for failed backups.
+[ "${COLLECT_FAILED}" == "true" ] && EXPORTER_COMMAND="${EXPORTER_COMMAND} --gpbackup.collect-failed"
+
 # Execute the final command.
 exec ${EXPORTER_COMMAND}
