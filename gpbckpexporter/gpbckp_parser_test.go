@@ -157,7 +157,7 @@ func returnTimeTime(sTime string) time.Time {
 	return rTime
 }
 
-func TestDBNotInExclude(t *testing.T) {
+func TestDbInList(t *testing.T) {
 	type args struct {
 		db          string
 		listExclude []string
@@ -170,17 +170,49 @@ func TestDBNotInExclude(t *testing.T) {
 		{
 			"Include",
 			args{"test", []string{"test"}},
-			false,
+			true,
 		},
 		{
 			"Exclude",
 			args{"test", []string{"demo"}},
-			true,
+			false,
+		},
+		{
+			"Empty list",
+			args{"test", []string{""}},
+			false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := dbNotInExclude(tt.args.db, tt.args.listExclude); got != tt.want {
+			if got := dbInList(tt.args.db, tt.args.listExclude); got != tt.want {
+				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestListEmpty(t *testing.T) {
+	tests := []struct {
+		name string
+		list []string
+		want bool
+	}{
+		{
+			name: "empty list",
+			list: []string{},
+			want: true,
+		},
+		{
+			name: "non-empty list",
+			list: []string{"a", "b", "c"},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := listEmpty(tt.list); got != tt.want {
 				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
 			}
 		})
