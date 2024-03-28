@@ -50,6 +50,14 @@ func main() {
 			"gpbackup.backup-type",
 			"Specific backup type for collecting metrics. One of: [full, incremental, data-only, metadata-only].",
 		).Default("").String()
+		gpbckpBackupCollectDeleted = kingpin.Flag(
+			"gpbackup.collect-deleted",
+			"Collecting metrics for deleted backups.",
+		).Default("false").Bool()
+		gpbckpBackupCollectFailed = kingpin.Flag(
+			"gpbackup.collect-failed",
+			"Collecting metrics for failed backups.",
+		).Default("false").Bool()
 	)
 	// Set logger config.
 	promlogConfig := &promlog.Config{}
@@ -81,6 +89,11 @@ func main() {
 	level.Info(logger).Log(
 		"mgs", "History database file path",
 		"file", *gpbckpHistoryFilePath)
+	level.Info(logger).Log(
+		"msg", "Collecting metrics for deleted and failed backups",
+		"deleted", *gpbckpBackupCollectDeleted,
+		"failed", gpbckpBackupCollectFailed,
+	)
 	if *collectionDepth > 0 {
 		level.Info(logger).Log(
 			"mgs", "Metrics depth collection in days",
@@ -121,6 +134,8 @@ func main() {
 		gpbckpexporter.GetGPBackupInfo(
 			*gpbckpHistoryFilePath,
 			*gpbckpBackupType,
+			*gpbckpBackupCollectDeleted,
+			*gpbckpBackupCollectFailed,
 			*gpbckpIncludeDB,
 			*gpbckpExcludeDB,
 			*collectionDepth,

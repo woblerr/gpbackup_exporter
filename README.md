@@ -29,12 +29,6 @@ By default, the metrics are collected for all databases and backups in history f
 | `gpbackup_exporter_info` | information about gpbackup exporter | version | |
 | `gpbackup_exporter_status` | gpbackup exporter get data status | database_name | Values description:<br> `0` - errors occurred when fetching information from history database,<br> `1` - information successfully fetched from history database. |
 
-### Additional description of metrics
-
-For `gpbackup_exporter_status` metric the following logic is applied:
-* if the information is collected for all available databases, the `database_name` label value will be `all-databases`;
-* otherwise, the database name will be set.
-
 ## Getting Started
 ### Building and running
 
