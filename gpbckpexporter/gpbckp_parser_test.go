@@ -157,7 +157,7 @@ func returnTimeTime(sTime string) time.Time {
 	return rTime
 }
 
-func TestDBNotInExclude(t *testing.T) {
+func TestDbInList(t *testing.T) {
 	type args struct {
 		db          string
 		listExclude []string
@@ -170,17 +170,49 @@ func TestDBNotInExclude(t *testing.T) {
 		{
 			"Include",
 			args{"test", []string{"test"}},
-			false,
+			true,
 		},
 		{
 			"Exclude",
 			args{"test", []string{"demo"}},
-			true,
+			false,
+		},
+		{
+			"Empty list",
+			args{"test", []string{""}},
+			false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := dbNotInExclude(tt.args.db, tt.args.listExclude); got != tt.want {
+			if got := dbInList(tt.args.db, tt.args.listExclude); got != tt.want {
+				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestListEmpty(t *testing.T) {
+	tests := []struct {
+		name string
+		list []string
+		want bool
+	}{
+		{
+			name: "empty list",
+			list: []string{},
+			want: true,
+		},
+		{
+			name: "non-empty list",
+			list: []string{"a", "b", "c"},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := listEmpty(tt.list); got != tt.want {
 				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
 			}
 		})
@@ -191,6 +223,8 @@ func TestDBNotInExclude(t *testing.T) {
 func TestParseBackupData(t *testing.T) {
 	type args struct {
 		historyFile string
+		cDeleted    bool
+		cFailed     bool
 	}
 	tests := []struct {
 		name    string
@@ -199,20 +233,32 @@ func TestParseBackupData(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "Test yaml file",
-			args:    args{historyFile: "test*.yaml"},
+			name: "Test yaml file",
+			args: args{
+				historyFile: "test*.yaml",
+				cDeleted:    false,
+				cFailed:     false,
+			},
 			want:    gpbckpconfig.History{},
 			wantErr: false,
 		},
 		{
-			name:    "Test db file",
-			args:    args{historyFile: "test*.db"},
+			name: "Test db file",
+			args: args{
+				historyFile: "test*.db",
+				cDeleted:    false,
+				cFailed:     false,
+			},
 			want:    gpbckpconfig.History{},
 			wantErr: true,
 		},
 		{
-			name:    "test unknown file extension",
-			args:    args{historyFile: "test*.txt"},
+			name: "test unknown file extension",
+			args: args{
+				historyFile: "test*.txt",
+				cDeleted:    false,
+				cFailed:     false,
+			},
 			want:    gpbckpconfig.History{},
 			wantErr: true,
 		},
@@ -224,7 +270,7 @@ func TestParseBackupData(t *testing.T) {
 				t.Fatalf("Failed to create temp file: %v", err)
 			}
 			defer os.Remove(tempFile.Name())
-			got, err := parseBackupData(tempFile.Name(), getLogger())
+			got, err := parseBackupData(tempFile.Name(), tt.args.cDeleted, tt.args.cFailed, getLogger())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("\nVariables do not match:\n%v\nwantErrText:\n%v", err, tt.wantErr)
 			}

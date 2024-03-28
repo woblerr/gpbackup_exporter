@@ -95,14 +95,14 @@ define service-remove
 endef
 
 define e2e_basic
-	docker run -d -p $(HTTP_PORT_E2E):$(HTTP_PORT) -v "${1}" --env HISTORY_FILE="${2}" --name=$(APP_NAME)_e2e $(APP_NAME)_e2e
+	docker run -d -p $(HTTP_PORT_E2E):$(HTTP_PORT) -v "${1}" --env HISTORY_FILE="${2}" --env COLLECT_DELETED="true" --env COLLECT_FAILED="true" --name=$(APP_NAME)_e2e $(APP_NAME)_e2e
 	@sleep 10
 	$(ROOT_DIR)/e2e_tests/run_e2e.sh $(HTTP_PORT_E2E)
 	docker rm -f $(APP_NAME)_e2e
 endef
 
 define e2e_tls_auth
-	docker run -d -p $(HTTP_PORT_E2E):$(HTTP_PORT)  -v "${1}" --env HISTORY_FILE="${2}"  --env EXPORTER_CONFIG="${3}" --name=$(APP_NAME)_e2e $(APP_NAME)_e2e
+	docker run -d -p $(HTTP_PORT_E2E):$(HTTP_PORT)  -v "${1}" --env HISTORY_FILE="${2}"  --env EXPORTER_CONFIG="${3}" --env COLLECT_DELETED="true" --env COLLECT_FAILED="true"  --name=$(APP_NAME)_e2e $(APP_NAME)_e2e
 	@sleep 10
 	$(ROOT_DIR)/e2e_tests/run_e2e.sh $(HTTP_PORT_E2E) ${4} ${5}
     docker rm -f $(APP_NAME)_e2e

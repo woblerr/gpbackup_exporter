@@ -19,6 +19,7 @@ type setUpMetricValueFunType func(metric *prometheus.GaugeVec, value float64, la
 
 type backupMap map[string]time.Time
 type lastBackupMap map[string]backupMap
+type dbStatusMap map[string]bool
 
 func setUpMetricValue(metric *prometheus.GaugeVec, value float64, labels ...string) error {
 	metricVec, err := metric.GetMetricWithLabelValues(labels...)
@@ -92,17 +93,21 @@ func setUpMetric(metric *prometheus.GaugeVec, metricName string, value float64, 
 	}
 }
 
-func dbNotInExclude(db string, listExclude []string) bool {
-	// Check that exclude list is empty.
-	// If so, no excluding databases are set during startup.
-	if strings.Join(listExclude, "") != "" {
-		for _, val := range listExclude {
-			if val == db {
-				return false
-			}
+func dbInList(db string, list []string) bool {
+	if listEmpty(list) {
+		return false
+	}
+	for _, val := range list {
+		if val == db {
+			return true
 		}
 	}
-	return true
+	return false
+}
+
+// Check list not empty.
+func listEmpty(list []string) bool {
+	return strings.Join(list, "") == ""
 }
 
 // Get and parse data from history database:
@@ -110,35 +115,46 @@ func dbNotInExclude(db string, listExclude []string) bool {
 //   - file with extension .yaml (before gpbackup 1.29.0);
 //
 // Returns parsed data or error.
-func parseBackupData(historyFile string, logger log.Logger) (gpbckpconfig.History, error) {
+func parseBackupData(historyFile string, collectDeleted, collectFailed bool, logger log.Logger) (gpbckpconfig.History, error) {
 	var parseHData gpbckpconfig.History
 	hFileExt := filepath.Ext(historyFile)
 	switch hFileExt {
 	case ".yaml":
-		return getDataFromHistoryFile(historyFile, logger)
+		return getDataFromHistoryFile(historyFile, collectDeleted, collectFailed, logger)
 	case ".db":
-		return getDataFromHistoryDB(historyFile, logger)
+		return getDataFromHistoryDB(historyFile, collectDeleted, collectFailed, logger)
 	default:
 		return parseHData, errors.New("file has an extension other than yaml or db (sqlite)")
 	}
 }
 
-func getDataFromHistoryFile(historyFile string, logger log.Logger) (gpbckpconfig.History, error) {
+func getDataFromHistoryFile(historyFile string, collectDeleted, collectFailed bool, logger log.Logger) (gpbckpconfig.History, error) {
 	var hData gpbckpconfig.History
 	historyData, err := gpbckpconfig.ReadHistoryFile(historyFile)
 	if err != nil {
 		level.Error(logger).Log("msg", "Read gpbackup history file failed", "err", err)
 		return hData, err
 	}
-	hData, err = gpbckpconfig.ParseResult(historyData)
+	parseData, err := gpbckpconfig.ParseResult(historyData)
 	if err != nil {
 		level.Error(logger).Log("msg", "Parse YAML failed", "err", err)
 		return hData, err
 	}
+	for _, backupData := range parseData.BackupConfigs {
+		backupDateDeleted, err := backupData.GetBackupDateDeleted()
+		if err != nil {
+			level.Error(logger).Log("msg", "Parse backup date deleted value failed", "err", err)
+		}
+		validBackup := gpbckpconfig.CheckBackupCanBeDisplayed(collectDeleted, collectFailed, backupData.Status, backupDateDeleted)
+		if validBackup {
+			// Already sorted.
+			hData.BackupConfigs = append(hData.BackupConfigs, backupData)
+		}
+	}
 	return hData, nil
 }
 
-func getDataFromHistoryDB(historyFile string, logger log.Logger) (gpbckpconfig.History, error) {
+func getDataFromHistoryDB(historyFile string, collectDeleted, collectFailed bool, logger log.Logger) (gpbckpconfig.History, error) {
 	var hData gpbckpconfig.History
 	hDB, err := gpbckpconfig.OpenHistoryDB(historyFile)
 	if err != nil {
@@ -151,8 +167,7 @@ func getDataFromHistoryDB(historyFile string, logger log.Logger) (gpbckpconfig.H
 			level.Error(logger).Log("msg", "Close gpbackup history db failed", "err", errClose)
 		}
 	}()
-	// Get all backups: active, deleted and failed.
-	backupList, err := gpbckpconfig.GetBackupNamesDB(true, true, hDB)
+	backupList, err := gpbckpconfig.GetBackupNamesDB(collectDeleted, collectFailed, hDB)
 	if err != nil {
 		level.Error(logger).Log("msg", "Get backups from history db failed", "err", err)
 		return hData, err

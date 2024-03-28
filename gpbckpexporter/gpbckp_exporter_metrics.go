@@ -34,21 +34,17 @@ func getExporterMetrics(exporterVer string, setUpMetricValueFun setUpMetricValue
 
 // Set exporter metrics:
 //   - gpbackup_exporter_status
-func getExporterStatusMetrics(dbName string, getDataStatus bool, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
-	// If the information is collected for all available databases,
-	// the value of the label 'database_name' will be 'all-databases',
-	// otherwise the database name will be set.
-	if dbName == "" {
-		dbName = "all-databases"
+func getExporterStatusMetrics(dbStatus dbStatusMap, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
+	for dbName, status := range dbStatus {
+		setUpMetric(
+			gpbckpExporterStatusMetric,
+			"gpbackup_exporter_status",
+			convertBoolToFloat64(status),
+			setUpMetricValueFun,
+			logger,
+			dbName,
+		)
 	}
-	setUpMetric(
-		gpbckpExporterStatusMetric,
-		"gpbackup_exporter_status",
-		convertBoolToFloat64(getDataStatus),
-		setUpMetricValueFun,
-		logger,
-		dbName,
-	)
 }
 
 func resetExporterMetrics() {

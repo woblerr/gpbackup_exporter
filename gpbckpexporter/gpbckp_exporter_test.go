@@ -36,11 +36,13 @@ func TestSetPromPortAndPath(t *testing.T) {
 
 func TestGetGPBackupInfo(t *testing.T) {
 	type args struct {
-		historyData string
-		bckpType    string
-		bckpIncl    []string
-		bckpExcl    []string
-		cDepth      int
+		historyData  string
+		bckpType     string
+		bckpCDeleted bool
+		bckpCFailed  bool
+		bckpIncl     []string
+		bckpExcl     []string
+		cDepth       int
 	}
 	tests := []struct {
 		name     string
@@ -107,12 +109,13 @@ func TestGetGPBackupInfo(t *testing.T) {
   withstatistics: false
   status: Success`,
 				"",
+				false,
+				false,
 				[]string{""},
 				[]string{""},
 				0,
 			},
-			`level=debug msg="Set up metric" metric=gpbackup_exporter_status value=1 labels=all-databases
-level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=full,test,none,none,20230118152654
+			`level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=full,test,none,none,20230118152654
 level=debug msg="Set up metric" metric=gpbackup_backup_deleted_status value=0 labels=full,test,none,none,none,20230118152654
 level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.26.0,full,gzip,test,6.23.0,none,none,none,20230118152654,false
 level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=full,test,20230118152656,none,none,20230118152654
@@ -124,12 +127,12 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
 		},
 		{
 			"FailedDataReturn",
-			args{"return error", "", []string{""}, []string{""}, 0},
+			args{"return error", "", false, false, []string{""}, []string{""}, 0},
 			"level=error msg=\"Parse YAML failed\" err=\"yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!str `return ...` into gpbckpconfig.History\"",
 		},
 		{
 			"NoDataReturn",
-			args{"", "", []string{""}, []string{""}, 0},
+			args{"", "", false, false, []string{""}, []string{""}, 0},
 			"level=warn msg=\"No backup data returned\"",
 		},
 		{
@@ -164,6 +167,8 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
   withstatistics: false
   status: Success`,
 				"",
+				false,
+				false,
 				[]string{""},
 				[]string{""},
 				14,
@@ -172,7 +177,42 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
 		},
 		{
 			"DBinIncludeAndExclude",
-			args{"", "", []string{"test"}, []string{"test"}, 0},
+			args{`backupconfigs:
+- backupdir: "/data/backups"
+  backupversion: 1.26.0
+  compressed: true
+  compressiontype: gzip
+  databasename: test
+  databaseversion: 6.23.0
+  dataonly: false
+  datedeleted: ""
+  excluderelations: []
+  excludeschemafiltered: false
+  excludeschemas: []
+  excludetablefiltered: false
+  includerelations: []
+  includeschemafiltered: false
+  includeschemas: []
+  includetablefiltered: false
+  incremental: false
+  leafpartitiondata: false
+  metadataonly: false
+  plugin: ""
+  pluginversion: ""
+  restoreplan: []
+  singledatafile: false
+  timestamp: "20230118152654"
+  endtime: "20230118152656"
+  withoutglobals: false
+  withstatistics: false
+  status: Success`,
+				"",
+				false,
+				false,
+				[]string{"test"},
+				[]string{"test"},
+				0,
+			},
 			"level=warn msg=\"DB is specified in include and exclude lists\" DB=test",
 		},
 		{
@@ -208,6 +248,8 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
   withstatistics: false
   status: Success`,
 				"",
+				false,
+				false,
 				[]string{""},
 				[]string{""},
 				0,
@@ -228,6 +270,8 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
 			GetGPBackupInfo(
 				tempFile.Name(),
 				tt.args.bckpType,
+				tt.args.bckpCDeleted,
+				tt.args.bckpCFailed,
 				tt.args.bckpIncl,
 				tt.args.bckpExcl,
 				tt.args.cDepth,

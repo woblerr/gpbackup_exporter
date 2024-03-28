@@ -29,12 +29,6 @@ By default, the metrics are collected for all databases and backups in history f
 | `gpbackup_exporter_info` | information about gpbackup exporter | version | |
 | `gpbackup_exporter_status` | gpbackup exporter get data status | database_name | Values description:<br> `0` - errors occurred when fetching information from history database,<br> `1` - information successfully fetched from history database. |
 
-### Additional description of metrics
-
-For `gpbackup_exporter_status` metric the following logic is applied:
-* if the information is collected for all available databases, the `database_name` label value will be `all-databases`;
-* otherwise, the database name will be set.
-
 ## Getting Started
 ### Building and running
 
@@ -66,6 +60,10 @@ Flags:
       --gpbackup.db-exclude="" ...  
                                  Specific db to exclude from collecting metrics. Can be specified several times.
       --gpbackup.backup-type=""  Specific backup type for collecting metrics. One of: [full, incremental, data-only, metadata-only].
+      --[no-]gpbackup.collect-deleted  
+                                 Collecting metrics for deleted backups.
+      --[no-]gpbackup.collect-failed  
+                                 Collecting metrics for failed backups.
       --log.level=info           Only log messages with the given severity or above. One of: [debug, info, warn, error]
       --log.format=logfmt        Output format of log messages. One of: [logfmt, json]
 ```
@@ -73,6 +71,8 @@ Flags:
 #### Additional description of flags.
 
 It's necessary to specify the `gpbackup_history.db` or `gpbackup_history.yaml` file location via `--gpbackup.history-file` flag.
+
+By default, metrics a collected only for active backups. The flag `--gpbackup.collect-deleted ` allows to collect metrics for deleted backups. The flag `--gpbackup.collect-failed ` allows to collect metrics for failed backups. 
 
 Custom database for collecting metrics can be specified via `--gpbackup.db-include` flag. You can specify several databases.<br>
 For example, `--gpbackup.db-include=demo1 --gpbackup.db-include=demo2`.<br>
@@ -108,6 +108,8 @@ Environment variables supported by this image:
 * `EXPORTER_CONFIG` - path to the configuration file for TLS and/or basic authentication, default `""`;
 * `COLLECT_INTERVAL` - collecting metrics interval in seconds, default `600`;
 * `COLLECT_DEPTH` - metrics depth collection in days, default `0`;
+* `COLLECT_DELETED` - collect metrics for deleted backups, default `false`;
+* `COLLECT_FAILED` - collect metrics for failed backups, default `false`;
 * `HISTORY_FILE` - path to gpbackup history file, default `""`;
 * `DB_INCLUDE` - specific database for collecting metrics, default `""`;
 * `DB_EXCLUDE` - specific database to exclude from collecting metrics, default `""`;
