@@ -137,3 +137,5 @@ jobs:
           distribution: goreleaser
           version: ${{ env.goreleaser_version }}
           args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
