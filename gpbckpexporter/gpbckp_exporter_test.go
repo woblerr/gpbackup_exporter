@@ -116,11 +116,11 @@ func TestGetGPBackupInfo(t *testing.T) {
 				0,
 			},
 			`level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=full,test,none,none,20230118152654
-level=debug msg="Set up metric" metric=gpbackup_backup_deleted_status value=0 labels=full,test,none,none,none,20230118152654
+level=debug msg="Set up metric" metric=gpbackup_backup_deletion_status value=0 labels=full,test,none,none,none,20230118152654
 level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.26.0,full,gzip,test,6.23.0,none,none,none,20230118152654,false
 level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=full,test,20230118152656,none,none,20230118152654
 level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=metadata-only,test,none,none,20230118162654
-level=debug msg="Set up metric" metric=gpbackup_backup_deleted_status value=0 labels=metadata-only,test,none,none,none,20230118162654
+level=debug msg="Set up metric" metric=gpbackup_backup_deletion_status value=0 labels=metadata-only,test,none,none,none,20230118162654
 level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.26.0,metadata-only,gzip,test,6.23.0,none,none,none,20230118162654,false
 level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=metadata-only,test,20230118162656,none,none,20230118162654
 `,
