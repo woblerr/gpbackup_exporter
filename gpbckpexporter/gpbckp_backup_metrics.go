@@ -22,7 +22,7 @@ var (
 			"plugin",
 			"timestamp"})
 	gpbckpBackupDataDeletedStatusMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "gpbackup_backup_deleted_status",
+		Name: "gpbackup_backup_deletion_status",
 		Help: "Backup deletion status.",
 	},
 		[]string{
@@ -63,7 +63,7 @@ var (
 
 // Set backup metrics:
 //   - gpbackup_backup_status
-//   - gpbackup_backup_deleted_status
+//   - gpbackup_backup_deletion_status
 //   - gpbackup_backup_info
 //   - gpbackup_backup_duration_seconds
 func getBackupMetrics(backupData gpbckpconfig.BackupConfig, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
@@ -103,7 +103,7 @@ func getBackupMetrics(backupData gpbckpconfig.BackupConfig, setUpMetricValueFun 
 	// Backup deletion status.
 	setUpMetric(
 		gpbckpBackupDataDeletedStatusMetric,
-		"gpbackup_backup_deleted_status",
+		"gpbackup_backup_deletion_status",
 		bckpDeletedStatus,
 		setUpMetricValueFun,
 		logger,

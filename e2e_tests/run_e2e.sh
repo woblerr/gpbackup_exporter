@@ -40,7 +40,7 @@ esac
 # A simple test to check the number of metrics.
 # Format: regex for metric | repetitions.
 declare -a REGEX_LIST=(
-    '^gpbackup_backup_deleted_status{.*}|7'
+    '^gpbackup_backup_deletion_status{.*}|7'
     '^gpbackup_backup_duration_seconds{.*object_filtering="none",plugin="none".*}|5'
     '^gpbackup_backup_duration_seconds{.*object_filtering="include-table",plugin="gpbackup_s3_plugin".*}|2'
     '^gpbackup_backup_duration_seconds{.*}|7'
