@@ -103,6 +103,7 @@ The description of TLS configuration and basic authentication can be found at [e
 ### Building and running docker
 
 Environment variables supported by this image:
+* `TZ` - container's time zone, default `Etc/UTC`;
 * `EXPORTER_ENDPOINT` - metrics endpoint, default `/metrics`;
 * `EXPORTER_PORT` - port for prometheus metrics to listen on, default `19854`;
 * `EXPORTER_CONFIG` - path to the configuration file for TLS and/or basic authentication, default `""`;
@@ -114,6 +115,8 @@ Environment variables supported by this image:
 * `DB_INCLUDE` - specific database for collecting metrics, default `""`;
 * `DB_EXCLUDE` - specific database to exclude from collecting metrics, default `""`;
 * `BACKUP_TYPE` - specific backup type for collecting metrics, default `""`.
+
+When running exporter in docker, it is necessary to specify correct timezone via `TZ` variable. The timestamp values in the history database are stored taking into account the timezone in which Greenplum cluster operates. Otherwise, there may be incorrect values for `gpbackup_backup_since_last_completion_seconds` metric.
 
 #### Pull
 
@@ -144,6 +147,7 @@ Simple run:
 ```bash
 docker run -d --restart=always \
     --name gpbackup_exporter \
+    -e TZ=America/Chicago \
     -e HISTORY_FILE=/data/gpbackup_history.yaml \
     -p 19854:19854 \
     -v /data/master/gpseg-1/gpbackup_history.yaml:/data/gpbackup_history.yaml:ro \

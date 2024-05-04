@@ -12,7 +12,8 @@ RUN apk add --no-cache --update build-base \
 
 FROM alpine:3.19
 ARG REPO_BUILD_TAG
-ENV EXPORTER_ENDPOINT="/metrics" \
+ENV TZ="Etc/UTC" \
+    EXPORTER_ENDPOINT="/metrics" \
     EXPORTER_PORT="19854" \
     EXPORTER_CONFIG="" \
     COLLECT_INTERVAL="600" \
@@ -24,14 +25,19 @@ ENV EXPORTER_ENDPOINT="/metrics" \
     DB_EXCLUDE="" \
     BACKUP_TYPE=""
 RUN apk add --no-cache --update \
+        tzdata \
+        su-exec \
         ca-certificates \
         bash \
+    && cp /usr/share/zoneinfo/${TZ} /etc/localtime \
+    && echo "${TZ}" > /etc/timezone \
     && rm -rf /var/cache/apk/*
+COPY --chmod=755 docker_files/entrypoint.sh /entrypoint.sh
 COPY --chmod=755 docker_files/run_exporter.sh /run_exporter.sh
 COPY --from=builder --chmod=755 /build/gpbackup_exporter /gpbackup_exporter
-USER nobody
 LABEL \
     org.opencontainers.image.version="${REPO_BUILD_TAG}" \
     org.opencontainers.image.source="https://github.com/woblerr/gpbackup_exporter"
-ENTRYPOINT ["/run_exporter.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/run_exporter.sh"]
 EXPOSE ${EXPORTER_PORT}
