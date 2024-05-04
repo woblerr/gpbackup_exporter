@@ -96,15 +96,15 @@ func GetGPBackupInfo(historyFile, backupType string, collectDeleted, collectFail
 					}
 					// Check backup type and compare with backup type filter.
 					if backupType == "" || backupType == bckpType {
-						bckpStartTime, err := time.Parse(gpbckpconfig.Layout, parseHData.BackupConfigs[i].Timestamp)
-						if err != nil {
-							level.Error(logger).Log("msg", "Parse backup timestamp value failed", "err", err)
-						}
-						// History file contains backup end time with timezone information.
+						// History file contains backup timestamp and endtime with timezone information.
 						// See https://github.com/greenplum-db/gpbackup/blob/722899aada32ec118eb311255ac521b691bb4360/backup/backup.go#L431-L432
 						// It is necessary to take this into account when calculating time intervals.
 						// With a high probability, the exporter will work in the same timezone as Greenplum cluster.
 						// If this is not the case, then there are many questions about the backup process.
+						bckpStartTime, err := time.ParseInLocation(gpbckpconfig.Layout, parseHData.BackupConfigs[i].Timestamp, time.Local)
+						if err != nil {
+							level.Error(logger).Log("msg", "Parse backup timestamp value failed", "err", err)
+						}
 						bckpStopTime, err := time.ParseInLocation(gpbckpconfig.Layout, parseHData.BackupConfigs[i].EndTime, time.Local)
 						if err != nil {
 							level.Error(logger).Log("msg", "Parse backup end time value failed", "err", err)
