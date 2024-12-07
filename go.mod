@@ -5,9 +5,9 @@ go 1.21
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/go-kit/log v0.2.1
-	github.com/prometheus/client_golang v1.14.0
-	github.com/prometheus/common v0.41.0
-	github.com/prometheus/exporter-toolkit v0.9.1
+	github.com/prometheus/client_golang v1.17.0
+	github.com/prometheus/common v0.45.0
+	github.com/prometheus/exporter-toolkit v0.11.0
 	github.com/woblerr/gpbackman v0.4.1
 )
 
@@ -32,10 +32,9 @@ require (
 	github.com/jackc/pgx/v4 v4.18.2 // indirect
 	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mattn/go-sqlite3 v1.14.19 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
+	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/nightlyone/lockfile v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
