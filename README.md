@@ -45,12 +45,13 @@ Available configuration flags:
 ./gpbackup_exporter --help
 usage: gpbackup_exporter [<flags>]
 
+
 Flags:
   -h, --[no-]help                Show context-sensitive help (also try --help-long and --help-man).
       --web.endpoint="/metrics"  Endpoint used for metrics.
       --web.listen-address=:19854 ...  
                                  Addresses on which to expose metrics and web interface. Repeatable for multiple addresses.
-      --web.config.file=""       [EXPERIMENTAL] Path to configuration file that can enable TLS or authentication.
+      --web.config.file=""       Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md
       --collect.interval=600     Collecting metrics interval in seconds.
       --collect.depth=0          Metrics depth collection in days. Metrics for backup older than this interval will not be collected. 0 - disable.
       --gpbackup.history-file=""  
