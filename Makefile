@@ -27,7 +27,7 @@ test-e2e:
 	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLSInLine_noAuth.yml,true,false)
 	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_Auth.yml,true,basic)
 	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_noTLS_Auth.yml,false,basic)
-	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_RequireAnyClientCert.yml,false,cert,"$(ROOT_DIR)/e2e_tests")
+	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_RequireAnyClientCert.yml,true,cert,"$(ROOT_DIR)/e2e_tests")
 	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_RequireAndVerifyClientCert.yml,true,cert,"$(ROOT_DIR)/e2e_tests")
 
 .PHONY: build
