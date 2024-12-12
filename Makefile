@@ -20,12 +20,15 @@ test-e2e:
 	@echo "Run end-to-end tests for $(APP_NAME)"
 	@if [ -n "$(DOCKER_CONTAINER_E2E)" ]; then docker rm -f "$(DOCKER_CONTAINER_E2E)"; fi;
 	DOCKER_BUILDKIT=1 docker build --pull -f Dockerfile --build-arg REPO_BUILD_TAG=$(BRANCH)-$(GIT_REV) -t $(APP_NAME)_e2e .
-	$(call e2e_basic,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.db)
-	$(call e2e_basic,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml)
-	$(call e2e_tls_auth,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_empty.yml,false,false)
-	$(call e2e_tls_auth,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_noAuth.yml,true,false)
-	$(call e2e_tls_auth,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_Auth.yml,true,true)
-	$(call e2e_tls_auth,$(PWD)/e2e_tests/test_data/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_noTLS_Auth.yml,false,true)
+	$(call e2e_basic,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.db)
+	$(call e2e_basic,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml)
+	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_empty.yml,false,false)
+	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_noAuth.yml,true,false)
+	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLSInLine_noAuth.yml,true,false)
+	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_Auth.yml,true,basic)
+	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_noTLS_Auth.yml,false,basic)
+	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_RequireAnyClientCert.yml,true,cert,"$(ROOT_DIR)/e2e_tests")
+	$(call e2e_tls_auth,$(PWD)/e2e_tests/:/e2e_tests/:ro,/e2e_tests/gpbackup_history.yaml,/e2e_tests/web_config_TLS_RequireAndVerifyClientCert.yml,true,cert,"$(ROOT_DIR)/e2e_tests")
 
 .PHONY: build
 build:
@@ -104,6 +107,6 @@ endef
 define e2e_tls_auth
 	docker run -d -p $(HTTP_PORT_E2E):$(HTTP_PORT)  -v "${1}" --env HISTORY_FILE="${2}"  --env EXPORTER_CONFIG="${3}" --env COLLECT_DELETED="true" --env COLLECT_FAILED="true"  --name=$(APP_NAME)_e2e $(APP_NAME)_e2e
 	@sleep 10
-	$(ROOT_DIR)/e2e_tests/run_e2e.sh $(HTTP_PORT_E2E) ${4} ${5}
+	$(ROOT_DIR)/e2e_tests/run_e2e.sh $(HTTP_PORT_E2E) ${4} ${5} ${6}
     docker rm -f $(APP_NAME)_e2e
 endef
