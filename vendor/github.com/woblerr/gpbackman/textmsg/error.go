@@ -70,14 +70,20 @@ func ErrorTextUnableGetBackupReport(backupName string, err error) string {
 	return fmt.Sprintf("Unable to get report for the backup %s. Error: %v", backupName, err)
 }
 
-func ErrorTextUnableGetBackupReportPath(backupName string, err error) string {
-	return fmt.Sprintf("Unable to get path to report for the backup %s. Error: %v", backupName, err)
+func ErrorTextUnableGetBackupPath(value, backupName string, err error) string {
+	return fmt.Sprintf("Unable to get path to %s for the backup %s. Error: %v", value, backupName, err)
 }
 
 // Errors that occur when working with a backup plugin.
 
 func ErrorTextUnableReadPluginConfigFile(err error) string {
 	return fmt.Sprintf("Unable to read plugin config file. Error: %v", err)
+}
+
+// Error that occur when working with a local backup.
+
+func ErrorTextCommandExecutionFailed(err error, values ...string) string {
+	return fmt.Sprintf("Command failed: %s. Error: %v", strings.Join(values, " "), err)
 }
 
 // Errors that occur during flags validation.
@@ -106,6 +112,16 @@ func ErrorTextUnableCompatibleFlagsValues(err error, values ...string) string {
 func ErrorTextUnableValidateValue(err error, values ...string) string {
 	return fmt.Sprintf("Unable to validate provided arguments. Try to use one of flags: %s. Error: %v",
 		strings.Join(values, ", "), err)
+}
+
+// Errors that occur when working with a local cluster.
+
+func ErrorTextUnableConnectLocalCluster(err error) string {
+	return fmt.Sprintf("Unable to connect to the cluster locally. Error: %v", err)
+}
+
+func ErrorTextUnableGetBackupDirLocalClusterConn(err error) string {
+	return fmt.Sprintf("Unable to get backup directory from a local connection to the cluster. Error: %v", err)
 }
 
 // Error that is returned when flags validation not passed.
@@ -140,6 +156,10 @@ func ErrorBackupLocalStorageError() error {
 	return errors.New("is a local backup")
 }
 
+func ErrorBackupNotLocalStorageError() error {
+	return errors.New("is not a local backup")
+}
+
 // Error that is returned when some validation fails.
 
 func ErrorValidationFullPath() error {
@@ -162,8 +182,26 @@ func ErrorValidationValue() error {
 	return errors.New("value not set")
 }
 
-// Error that is returned when some plugin options validation fails
+func ErrorEmptyDatabase() error {
+	return errors.New("database name cannot be empty")
+}
+
+// Error that is returned when some plugin options validation fails.
 
 func ErrorValidationPluginOption(value, pluginName string) error {
 	return fmt.Errorf("invalid plugin %s option value for plugin %s", value, pluginName)
+}
+
+// Errors that are returned when some backup directory validation fails.
+
+func ErrorFindBackupDirIn(value string, err error) error {
+	return fmt.Errorf("can not find backup directory in %s, error: %v", value, err.Error())
+}
+
+func ErrorNotFoundBackupDirIn(value string) error {
+	return fmt.Errorf("no backup directory found in %s", value)
+}
+
+func ErrorSeveralFoundBackupDirIn(value string) error {
+	return fmt.Errorf("several backup directory found in %s", value)
 }
