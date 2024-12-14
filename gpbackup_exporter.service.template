@@ -3,12 +3,9 @@ Description=gpbackup_exporter
 
 [Service]
 Type=simple
-Environment="EXPORTER_ENDPOINT=/metrics"
-Environment="EXPORTER_PORT=19854"
-Environment="COLLECT_INTERVAL=600"
-Environment="HISTORY_FILE=/data/master/gpseg-1/gpbackup_history.yaml"
-
-ExecStart=/usr/bin/gpbackup_exporter --gpbackup.history-file=${HISTORY_FILE} --web.listen-address=:${EXPORTER_PORT} --collect.interval=${COLLECT_INTERVAL}
+Environment="ARGS=--gpbackup.history-file=/data/master/gpseg-1/gpbackup_history.db --web.endpoint=/metrics --web.listen-address=:19854 --collect.interval=600"
+EnvironmentFile=-/etc/default/gpbackup_exporter
+ExecStart=/usr/bin/gpbackup_exporter $ARGS
 Restart=always
 RestartSec=5s
 
