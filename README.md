@@ -4,9 +4,11 @@
 [![Coverage Status](https://coveralls.io/repos/github/woblerr/gpbackup_exporter/badge.svg?branch=master)](https://coveralls.io/github/woblerr/gpbackup_exporter?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/woblerr/gpbackup_exporter)](https://goreportcard.com/report/github.com/woblerr/gpbackup_exporter)
 
-Prometheus exporter for collecting metrics from [gpbackup](https://github.com/greenplum-db/gpbackup) history file `gpbackup_history.db`/`gpbackup_history.yaml`.
+Prometheus exporter for collecting metrics from [gpbackup](https://github.com/greenplum-db/gpbackup) history file `gpbackup_history.db`.
 
-By default, the metrics are collected for all databases and backups in history file. You need to run exporter or Docker image on the same host where is `gpbackup_history.db`/`gpbackup_history.yaml` file located (Greenplum Master host).
+By default, the metrics are collected for all databases and backups in history file. You need to run exporter or Docker image on the same host where is `gpbackup_history.db` file located (Greenplum Master host).
+
+If you are using an old `gpbackup` version that supports only the YAML format `gpbackup_history.yaml` , then use `gpbackup_exporter <= v0.3.0`.
 
 ## Collected metrics
 ### Backup metrics
@@ -51,11 +53,12 @@ Flags:
       --web.endpoint="/metrics"  Endpoint used for metrics.
       --web.listen-address=:19854 ...  
                                  Addresses on which to expose metrics and web interface. Repeatable for multiple addresses.
-      --web.config.file=""       Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md
+      --web.config.file=""       Path to configuration file that can enable TLS or authentication. See:
+                                 https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md
       --collect.interval=600     Collecting metrics interval in seconds.
       --collect.depth=0          Metrics depth collection in days. Metrics for backup older than this interval will not be collected. 0 - disable.
       --gpbackup.history-file=""  
-                                 Path to gpbackup_history.db or gpbackup_history.yaml.
+                                 Path to gpbackup_history.db.
       --gpbackup.db-include="" ...  
                                  Specific db for collecting metrics. Can be specified several times.
       --gpbackup.db-exclude="" ...  
@@ -71,7 +74,7 @@ Flags:
 
 #### Additional description of flags.
 
-It's necessary to specify the `gpbackup_history.db` or `gpbackup_history.yaml` file location via `--gpbackup.history-file` flag.
+It's necessary to specify the `gpbackup_history.db` file location via `--gpbackup.history-file` flag.
 
 By default, metrics a collected only for active backups. The flag `--gpbackup.collect-deleted ` allows to collect metrics for deleted backups. The flag `--gpbackup.collect-failed ` allows to collect metrics for failed backups. 
 
@@ -149,9 +152,9 @@ Simple run:
 docker run -d --restart=always \
     --name gpbackup_exporter \
     -e TZ=America/Chicago \
-    -e HISTORY_FILE=/data/gpbackup_history.yaml \
+    -e HISTORY_FILE=/data/gpbackup_history.db \
     -p 19854:19854 \
-    -v /data/master/gpseg-1/gpbackup_history.yaml:/data/gpbackup_history.yaml:ro \
+    -v /data/master/gpseg-1/gpbackup_history.db:/data/gpbackup_history.db:ro \
     gpbackup_exporter
 ```
 
@@ -160,10 +163,10 @@ For specific database:
 ```bash
 docker run -d --restart=always \
     --name gpbackup_exporter \
-    -e HISTORY_FILE=/data/gpbackup_history.yaml \
+    -e HISTORY_FILE=/data/gpbackup_history.db \
     -e DB_INCLUDE=demo1 \
     -p 19854:19854 \
-    -v /data/master/gpseg-1/gpbackup_history.yaml:/data/gpbackup_history.yaml:ro \
+    -v /data/master/gpseg-1/gpbackup_history.db:/data/gpbackup_history.db:ro \
     gpbackup_exporter
 ```
 
@@ -173,18 +176,18 @@ you can run containers on different ports:
 ```bash
 docker run -d --restart=always \
     --name gpbackup_exporter \
-    -e HISTORY_FILE=/data/gpbackup_history.yaml \
+    -e HISTORY_FILE=/data/gpbackup_history.db \
     -e DB_INCLUDE=demo1 \
     -p 19854:19854 \
-    -v /data/master/gpseg-1/gpbackup_history.yaml:/data/gpbackup_history.yaml:ro \
+    -v /data/master/gpseg-1/gpbackup_history.db:/data/gpbackup_history.db:ro \
     gpbackup_exporter
 
 docker run -d --restart=always \
     --name gpbackup_exporter \
-    -e HISTORY_FILE=/data/gpbackup_history.yaml \
+    -e HISTORY_FILE=/data/gpbackup_history.db \
     -e DB_INCLUDE=demo2 \
     -p 19855:19854 \
-    -v /data/master/gpseg-1/gpbackup_history.yaml:/data/gpbackup_history.yaml:ro \
+    -v /data/master/gpseg-1/gpbackup_history.db:/data/gpbackup_history.db:ro \
     gpbackup_exporter
 ```
 
@@ -193,10 +196,10 @@ To exclude specific database:
 ```bash
 docker run -d --restart=always \
     --name gpbackup_exporter \
-    -e HISTORY_FILE=/data/gpbackup_history.yaml \
+    -e HISTORY_FILE=/data/gpbackup_history.db \
     -e DB_EXCLUDE=demo1 \
     -p 19854:19854 \
-    -v /data/master/gpseg-1/gpbackup_history.yaml:/data/gpbackup_history.yaml:ro \
+    -v /data/master/gpseg-1/gpbackup_history.db:/data/gpbackup_history.db:ro \
     gpbackup_exporter
 ```
 
@@ -205,11 +208,11 @@ For specific backup type not older than 14 days:
 ```bash
 docker run -d --restart=always \
     --name gpbackup_exporter \
-    -e HISTORY_FILE=/data/gpbackup_history.yaml \
+    -e HISTORY_FILE=/data/gpbackup_history.db \
     -e BACKUP_TYPE=full \
     -e COLLECT_DEPTH=14 \
     -p 19854:19854 \
-    -v /data/master/gpseg-1/gpbackup_history.yaml:/data/gpbackup_history.yaml:ro \
+    -v /data/master/gpseg-1/gpbackup_history.db:/data/gpbackup_history.db:ro \
     gpbackup_exporter
 ```
 
@@ -218,7 +221,7 @@ docker run -d --restart=always \
 * Register `gpbackup_exporter` (already builded, if not - exec `make build` before) as a systemd service:
 
 ```bash
-make prepare-service HISTORY_FILE="/path/to/gpbackup_history.yaml"
+make prepare-service HISTORY_FILE="/path/to/gpbackup_history.db"
 ```
 
 Validate prepared file `gpbackup_exporter.service` and run:
@@ -246,7 +249,7 @@ Manual register systemd service:
 cp gpbackup_exporter.service.template gpbackup_exporter.service
 ```
 
-In file `gpbackup_exporter.service.template` replace `/usr/bin/gpbackup_exporter` to full path to `gpbackup_exporter` and `/data/master/gpseg-1/gpbackup_history.yaml` to full path to `gpbackup_history.yaml`.
+In file `gpbackup_exporter.service.template` replace `/usr/bin/gpbackup_exporter` to full path to `gpbackup_exporter` and `/data/master/gpseg-1/gpbackup_history.db` to full path to `gpbackup_history.db`.
 
 ```bash
 sudo cp gpbackup_exporter.service /etc/systemd/system/gpbackup_exporter.service
@@ -268,7 +271,7 @@ rpm -ql gpbackup_exporter
 /usr/bin/gpbackup_exporter
 ```
 
-After installation RPM/DEB package, you need to set correct path to `gpbackup_history.db`/`gpbackup_history.yaml` in `/etc/systemd/system/gpbackup_exporter.service`.
+After installation RPM/DEB package, you need to set correct path to `gpbackup_history.db` in `/etc/systemd/system/gpbackup_exporter.service`.
 
 
 ### Running tests
