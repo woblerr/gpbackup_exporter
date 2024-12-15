@@ -29,7 +29,7 @@ gpbackup_backup_deletion_status{backup_type="full",database_name="test",date_del
 gpbackup_backup_duration_seconds{backup_type="full",database_name="test",end_time="20230118152656",object_filtering="none",plugin="none",timestamp="20230118152654"} 2
 # HELP gpbackup_backup_info Backup info.
 # TYPE gpbackup_backup_info gauge
-gpbackup_backup_info{backup_dir="/data/backups",backup_type="full",backup_ver="1.26.0",compression_type="gzip",database_name="test",database_ver="6.23.0",object_filtering="none",plugin="none",plugin_ver="none",timestamp="20230118152654",with_statistic="false"} 1
+gpbackup_backup_info{backup_dir="/data/backups",backup_type="full",backup_ver="1.30.5",compression_type="gzip",database_name="test",database_ver="6.23.0",object_filtering="none",plugin="none",plugin_ver="none",timestamp="20230118152654",with_statistic="false"} 1
 # HELP gpbackup_backup_status Backup status.
 # TYPE gpbackup_backup_status gauge
 gpbackup_backup_status{backup_type="full",database_name="test",object_filtering="none",plugin="none",timestamp="20230118152654"} 0

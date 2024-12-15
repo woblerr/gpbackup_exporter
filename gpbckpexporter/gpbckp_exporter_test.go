@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/greenplum-db/gpbackup/history"
 	"github.com/prometheus/exporter-toolkit/web"
+	"github.com/woblerr/gpbackman/gpbckpconfig"
 )
 
 func TestSetPromPortAndPath(t *testing.T) {
@@ -53,7 +55,7 @@ func TestGetGPBackupInfo(t *testing.T) {
 			"GoodDataReturn",
 			args{`backupconfigs:
 - backupdir: "/data/backups"
-  backupversion: 1.26.0
+  backupversion: 1.30.5
   compressed: true
   compressiontype: gzip
   databasename: test
@@ -81,7 +83,7 @@ func TestGetGPBackupInfo(t *testing.T) {
   withstatistics: false
   status: Success
 - backupdir: "/data/backups"
-  backupversion: 1.26.0
+  backupversion: 1.30.5
   compressed: true
   compressiontype: gzip
   databasename: test
@@ -103,8 +105,8 @@ func TestGetGPBackupInfo(t *testing.T) {
   pluginversion: ""
   restoreplan: []
   singledatafile: false
-  timestamp: "20230118162654"
-  endtime: "20230118162656"
+  timestamp: "20230118162454"
+  endtime: "20230118162456"
   withoutglobals: false
   withstatistics: false
   status: Success`,
@@ -115,20 +117,15 @@ func TestGetGPBackupInfo(t *testing.T) {
 				[]string{""},
 				0,
 			},
-			`level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=full,test,none,none,20230118152654
+			`level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=metadata-only,test,none,none,20230118162454
+level=debug msg="Set up metric" metric=gpbackup_backup_deletion_status value=0 labels=metadata-only,test,none,none,none,20230118162454
+level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.30.5,metadata-only,gzip,test,6.23.0,none,none,none,20230118162454,false
+level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=metadata-only,test,20230118162456,none,none,20230118162454
+level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=full,test,none,none,20230118152654
 level=debug msg="Set up metric" metric=gpbackup_backup_deletion_status value=0 labels=full,test,none,none,none,20230118152654
-level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.26.0,full,gzip,test,6.23.0,none,none,none,20230118152654,false
+level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.30.5,full,gzip,test,6.23.0,none,none,none,20230118152654,false
 level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=full,test,20230118152656,none,none,20230118152654
-level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=metadata-only,test,none,none,20230118162654
-level=debug msg="Set up metric" metric=gpbackup_backup_deletion_status value=0 labels=metadata-only,test,none,none,none,20230118162654
-level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.26.0,metadata-only,gzip,test,6.23.0,none,none,none,20230118162654,false
-level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=metadata-only,test,20230118162656,none,none,20230118162654
 `,
-		},
-		{
-			"FailedDataReturn",
-			args{"return error", "", false, false, []string{""}, []string{""}, 0},
-			"level=error msg=\"Parse YAML failed\" err=\"yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!str `return ...` into gpbckpconfig.History\"",
 		},
 		{
 			"NoDataReturn",
@@ -139,7 +136,7 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
 			"UseDepthAndOlderDepthInterval",
 			args{`backupconfigs:
 - backupdir: "/data/backups"
-  backupversion: 1.26.0
+  backupversion: 1.30.5
   compressed: true
   compressiontype: gzip
   databasename: test
@@ -179,7 +176,7 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
 			"DBinIncludeAndExclude",
 			args{`backupconfigs:
 - backupdir: "/data/backups"
-  backupversion: 1.26.0
+  backupversion: 1.30.5
   compressed: true
   compressiontype: gzip
   databasename: test
@@ -220,7 +217,7 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
 			// Set dataonly: true, incremental:true and metadataonly: true, that's invalid.
 			args{`backupconfigs:
 - backupdir: "/data/backups"
-  backupversion: 1.26.0
+  backupversion: 1.30.5
   compressed: true
   compressiontype: gzip
   databasename: test
@@ -285,14 +282,91 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
 }
 
 func fakeHistoryFileData(text string) (*os.File, error) {
-	tempFile, err := os.CreateTemp("", "gpbackup_history*.yaml")
+	// Create a temporary SQLite file
+	tempFile, err := os.CreateTemp("", "gpbackup_history*.db")
 	if err != nil {
 		return nil, err
 	}
-	if _, err := tempFile.Write([]byte(text)); err != nil {
+	defer tempFile.Close()
+	hDB, err := history.InitializeHistoryDatabase(tempFile.Name())
+	if err != nil {
 		return nil, err
 	}
+	defer hDB.Close()
+	parseHData, err := gpbckpconfig.ParseResult([]byte(text))
+	if err != nil {
+		return nil, err
+	}
+	for _, backupConfig := range parseHData.BackupConfigs {
+		hBackupConfig := gpbckpconfig.ConvertToHistoryBackupConfig(backupConfig)
+		err = history.StoreBackupHistory(hDB, &hBackupConfig)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return tempFile, nil
+}
+
+func TestFakeHistoryFileData(t *testing.T) {
+	tests := []struct {
+		name    string
+		text    string
+		wantErr bool
+	}{
+		{
+			name: "Valid input",
+			text: `backupconfigs:
+- backupdir: "/data/backups"
+  backupversion: 1.30.5
+  compressed: true
+  compressiontype: gzip
+  databasename: test
+  databaseversion: 6.23.0
+  dataonly: false
+  datedeleted: ""
+  excluderelations: []
+  excludeschemafiltered: false
+  excludeschemas: []
+  excludetablefiltered: false
+  includerelations: []
+  includeschemafiltered: false
+  includeschemas: []
+  includetablefiltered: false
+  incremental: false
+  leafpartitiondata: false
+  metadataonly: false
+  plugin: ""
+  pluginversion: ""
+  restoreplan: []
+  singledatafile: false
+  timestamp: "20230118152654"
+  endtime: "20230118152656"
+  withoutglobals: false
+  withstatistics: false
+  status: Success`,
+			wantErr: false,
+		},
+		{
+			name:    "Invalid input",
+			text:    `invalid json`,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, err := fakeHistoryFileData(tt.text)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("fakeHistoryFileData() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && file == nil {
+				t.Errorf("fakeHistoryFileData() returned nil file for valid input")
+			}
+			if file != nil {
+				defer os.Remove(file.Name())
+			}
+		})
+	}
 }
 
 // Helper for displaying web.FlagConfig values test messages.
