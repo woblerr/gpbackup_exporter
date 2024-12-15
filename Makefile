@@ -7,6 +7,7 @@ SERVICE_CONF_DIR := /etc/systemd/system
 HISTORY_FILE ?= /data/master/gpseg-1/gpbackup_history.db
 HTTP_PORT := 19854
 ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+MUSL_CROSS := $(shell brew list| grep musl-cross)
 DOCKER_CONTAINER_E2E := $(shell docker ps -a -q -f name=$(APP_NAME)_e2e)
 HTTP_PORT_E2E := $(shell echo $$((10000 + ($$RANDOM % 10000))))
 
@@ -36,17 +37,18 @@ build:
 	@make test
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -mod=vendor -trimpath -ldflags "-X main.version=$(BRANCH)-$(GIT_REV)" -o $(APP_NAME) $(APP_NAME).go
 
-.PHONY: build-arm
-build-arm:
+.PHONY: build-on-darwin
+build-on-darwin:
 	@echo "Build $(APP_NAME)"
 	@make test
-	CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -mod=vendor -trimpath -ldflags "-X main.version=$(BRANCH)-$(GIT_REV)" -o $(APP_NAME) $(APP_NAME).go
+	@if [ -z "$(MUSL_CROSS)" ]; then echo "musl-cross is not installed"; exit 1; fi;
+	CC=x86_64-linux-musl-gcc CXX=x86_64-linux-musl-g++ CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -mod=vendor -trimpath -ldflags "-linkmode external -extldflags -static -X main.version=$(BRANCH)-$(GIT_REV)" -o $(APP_NAME) $(APP_NAME).go
 
 .PHONY: build-darwin
 build-darwin:
 	@echo "Build $(APP_NAME)"
 	@make test
-	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -mod=vendor -trimpath -ldflags "-X main.version=$(BRANCH)-$(GIT_REV)" -o $(APP_NAME) $(APP_NAME).go
+	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -mod=vendor -trimpath -ldflags "-X main.version=$(BRANCH)-$(GIT_REV)" -o $(APP_NAME) $(APP_NAME).go
 
 .PHONY: dist
 dist:
