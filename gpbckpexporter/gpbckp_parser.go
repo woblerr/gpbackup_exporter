@@ -3,7 +3,6 @@ package gpbckpexporter
 import (
 	"errors"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -111,47 +110,15 @@ func listEmpty(list []string) bool {
 }
 
 // Get and parse data from history database:
-//   - file with extension .db (sqlite, after gpbackup 1.29.0);
-//   - file with extension .yaml (before gpbackup 1.29.0);
+//   - file with extension .db (sqlite).
 //
 // Returns parsed data or error.
 func parseBackupData(historyFile string, collectDeleted, collectFailed bool, logger log.Logger) (gpbckpconfig.History, error) {
 	var parseHData gpbckpconfig.History
-	hFileExt := filepath.Ext(historyFile)
-	switch hFileExt {
-	case ".yaml":
-		return getDataFromHistoryFile(historyFile, collectDeleted, collectFailed, logger)
-	case ".db":
-		return getDataFromHistoryDB(historyFile, collectDeleted, collectFailed, logger)
-	default:
-		return parseHData, errors.New("file has an extension other than yaml or db (sqlite)")
+	if filepath.Ext(historyFile) != ".db" {
+		return parseHData, errors.New("file has an extension other than db (sqlite)")
 	}
-}
-
-func getDataFromHistoryFile(historyFile string, collectDeleted, collectFailed bool, logger log.Logger) (gpbckpconfig.History, error) {
-	var hData gpbckpconfig.History
-	historyData, err := gpbckpconfig.ReadHistoryFile(historyFile)
-	if err != nil {
-		level.Error(logger).Log("msg", "Read gpbackup history file failed", "err", err)
-		return hData, err
-	}
-	parseData, err := gpbckpconfig.ParseResult(historyData)
-	if err != nil {
-		level.Error(logger).Log("msg", "Parse YAML failed", "err", err)
-		return hData, err
-	}
-	for _, backupData := range parseData.BackupConfigs {
-		backupDateDeleted, err := backupData.GetBackupDateDeleted()
-		if err != nil {
-			level.Error(logger).Log("msg", "Parse backup date deleted value failed", "err", err)
-		}
-		validBackup := gpbckpconfig.CheckBackupCanBeDisplayed(collectDeleted, collectFailed, backupData.Status, backupDateDeleted)
-		if validBackup {
-			// Already sorted.
-			hData.BackupConfigs = append(hData.BackupConfigs, backupData)
-		}
-	}
-	return hData, nil
+	return getDataFromHistoryDB(historyFile, collectDeleted, collectFailed, logger)
 }
 
 func getDataFromHistoryDB(historyFile string, collectDeleted, collectFailed bool, logger log.Logger) (gpbckpconfig.History, error) {
@@ -181,13 +148,5 @@ func getDataFromHistoryDB(historyFile string, collectDeleted, collectFailed bool
 		}
 		hData.BackupConfigs = append(hData.BackupConfigs, backupData)
 	}
-	// Sort backups.
-	// Since both database formats (yaml and sqlite) are supported simultaneously,
-	// it is necessary to sort the result by field Timestamp.
-	// Similar to how it is done for yaml format.
-	// When switching to sqlite format only, this code will become irrelevant.
-	sort.Slice(hData.BackupConfigs, func(i, j int) bool {
-		return hData.BackupConfigs[i].Timestamp > hData.BackupConfigs[j].Timestamp
-	})
 	return hData, nil
 }

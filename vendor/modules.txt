@@ -73,6 +73,11 @@ github.com/jmoiron/sqlx/reflectx
 # github.com/jpillora/backoff v1.0.0
 ## explicit; go 1.13
 github.com/jpillora/backoff
+# github.com/lib/pq v1.10.7
+## explicit; go 1.13
+github.com/lib/pq
+github.com/lib/pq/oid
+github.com/lib/pq/scram
 # github.com/mattn/go-runewidth v0.0.15
 ## explicit; go 1.9
 github.com/mattn/go-runewidth
@@ -119,7 +124,7 @@ github.com/prometheus/procfs/internal/util
 github.com/rivo/uniseg
 # github.com/rogpeppe/go-internal v1.12.0
 ## explicit; go 1.20
-# github.com/woblerr/gpbackman v0.4.1
+# github.com/woblerr/gpbackman v0.7.1
 ## explicit; go 1.21
 github.com/woblerr/gpbackman/gpbckpconfig
 github.com/woblerr/gpbackman/textmsg

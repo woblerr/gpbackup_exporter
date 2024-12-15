@@ -64,6 +64,10 @@ func GetGPBackupInfo(historyFile, backupType string, collectDeleted, collectFail
 	// Calculate metrics collection depth.
 	// For backups with timestamp older than this - metrics doesn't collect.
 	collectDepthTime := currentTime.AddDate(0, 0, -collectDepth)
+	// The old logic has been left unchanged.
+	// Although yaml format support has been removed, the code is working.
+	// Below is the original comment (for the case of working with both yaml and sqlite formats).
+	//
 	// Because there are two different format of history database,
 	// it's better to use different methods to get data from yaml and sqlite format.
 	// For yaml we get all data from history file, parse and than filter data.
@@ -111,6 +115,10 @@ func GetGPBackupInfo(historyFile, backupType string, collectDeleted, collectFail
 						}
 						// Only if set correct value for collectDepth.
 						if collectDepth > 0 {
+							// The old logic has been left unchanged.
+							// Although yaml format support has been removed, the code is working.
+							// Below is the original comment (for the case of working with both yaml and sqlite formats).
+							//
 							// gpbackup_history.yml file is sorted by timestamp values.
 							// The data of the most recent backup is always located at the beginning of the file.
 							// When Unmarshal, we get a sorted list.

@@ -36,7 +36,7 @@ func main() {
 		).Default("0").Int()
 		gpbckpHistoryFilePath = kingpin.Flag(
 			"gpbackup.history-file",
-			"Path to gpbackup_history.db or gpbackup_history.yaml.",
+			"Path to gpbackup_history.db.",
 		).Default("").String()
 		gpbckpIncludeDB = kingpin.Flag(
 			"gpbackup.db-include",
@@ -130,7 +130,7 @@ func main() {
 	// Set up exporter info metric.
 	gpbckpexporter.GetExporterInfo(version, logger)
 	for {
-		// Get information form gpbackup_history.yaml.
+		// Get information form gpbackup_history.db.
 		gpbckpexporter.GetGPBackupInfo(
 			*gpbckpHistoryFilePath,
 			*gpbckpBackupType,

@@ -59,8 +59,9 @@ const (
 	BackupTypeDataOnly     = "data-only"
 	BackupTypeMetadataOnly = "metadata-only"
 	// Backup statuses.
-	BackupStatusSuccess = "Success"
-	BackupStatusFailure = "Failure"
+	BackupStatusSuccess    = "Success"
+	BackupStatusFailure    = "Failure"
+	BackupStatusInProgress = "In Progress"
 	// Object filtering types.
 	objectFilteringIncludeSchema = "include-schema"
 	objectFilteringExcludeSchema = "exclude-schema"
@@ -81,23 +82,26 @@ const (
 //   - metadata-only – contains only global and local metadata for the database;
 //   - data-only – contains only user data from the database.
 //
-// For gpbackup you cannot combine --data-only or --metadata-only with --incremental (see docs).
-// So these options cannot be set at the same time.
-// If not one of the --data-only, --metadata-only and --incremental flags is not set,
-// the full value is returned.
-// But if the --data-only flag set, or it's full backup, but there are no tables in backup set contain data,
-// the metadata-only value is returned.
-// See https://github.com/greenplum-db/gpbackup/blob/b061a47b673238439442340e66ca57d896edacd5/backup/backup.go#L127-L129
 // In all other cases, an error is returned.
 func (backupConfig BackupConfig) GetBackupType() (string, error) {
+	// For gpbackup you cannot combine --data-only or --metadata-only with --incremental (see docs).
+	// So these options cannot be set at the same time.
+	// If not one of the --data-only, --metadata-only and --incremental flags is not set,
+	// the full value is returned.
+	// But if there are no tables in backup set contain data,
+	// the metadata-only value is returned.
+	// See https://github.com/woblerr/gpbackup/blob/b061a47b673238439442340e66ca57d896edacd5/backup/backup.go#L127-L129
 	switch {
-	case !(backupConfig.Incremental || backupConfig.DataOnly || backupConfig.MetadataOnly):
+	case !backupConfig.Incremental && !backupConfig.DataOnly && !backupConfig.MetadataOnly:
 		return BackupTypeFull, nil
-	case backupConfig.Incremental && !(backupConfig.DataOnly || backupConfig.MetadataOnly):
+	case backupConfig.Incremental && !backupConfig.DataOnly && !backupConfig.MetadataOnly:
 		return BackupTypeIncremental, nil
-	case backupConfig.DataOnly && !(backupConfig.Incremental || backupConfig.MetadataOnly):
+	case backupConfig.DataOnly && !backupConfig.Incremental && !backupConfig.MetadataOnly:
 		return BackupTypeDataOnly, nil
-	case backupConfig.MetadataOnly && !(backupConfig.Incremental):
+	// If only metadata-only value.
+	// Or combination metadata-only and incremental or metadata-only and data-only.
+	// The case when there are no tables in backup set contain data.
+	case (backupConfig.MetadataOnly && !backupConfig.Incremental) || (backupConfig.MetadataOnly && !backupConfig.DataOnly):
 		return BackupTypeMetadataOnly, nil
 	default:
 		return "", errors.New("backup type does not match any of the available values")
@@ -197,14 +201,14 @@ func (backupConfig BackupConfig) GetBackupDateDeleted() (string, error) {
 // IsSuccess Check backup status.
 // Returns:
 //   - true  - if backup is successful,
-//   - false - false if backup is not successful.
+//   - false - false if backup is not successful or in progress.
 //
 // In all other cases, an error is returned.
 func (backupConfig BackupConfig) IsSuccess() (bool, error) {
 	switch backupConfig.Status {
 	case BackupStatusSuccess:
 		return true, nil
-	case BackupStatusFailure:
+	case BackupStatusFailure, BackupStatusInProgress:
 		return false, nil
 	default:
 		return false, errors.New("backup status does not match any of the available values")
@@ -217,6 +221,10 @@ func (backupConfig BackupConfig) IsSuccess() (bool, error) {
 //   - false - if the backup in plugin storage (plugin field is not empty).
 func (backupConfig BackupConfig) IsLocal() bool {
 	return backupConfig.Plugin == ""
+}
+
+func (backupConfig BackupConfig) IsInProgress() bool {
+	return backupConfig.Status == BackupStatusInProgress
 }
 
 // GetReportFilePathPlugin Return path to report file name for specific plugin.

@@ -111,7 +111,7 @@ func fakeSetUpMetricValue(metric *prometheus.GaugeVec, value float64, labels ...
 func templateBackupConfig() gpbckpconfig.BackupConfig {
 	return gpbckpconfig.BackupConfig{
 		BackupDir:             "/data/backups",
-		BackupVersion:         "1.26.0",
+		BackupVersion:         "1.30.5",
 		Compressed:            true,
 		CompressionType:       "gzip",
 		DatabaseName:          "test",
@@ -240,7 +240,7 @@ func TestParseBackupData(t *testing.T) {
 				cFailed:     false,
 			},
 			want:    gpbckpconfig.History{},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "Test db file",
