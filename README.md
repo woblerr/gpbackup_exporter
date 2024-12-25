@@ -10,6 +10,10 @@ By default, the metrics are collected for all databases and backups in history f
 
 If you are using an old `gpbackup` version that supports only the YAML format `gpbackup_history.yaml` , then use `gpbackup_exporter <= v0.3.0`.
 
+## Grafana dashboard
+
+To get a dashboard for visualizing the collected metrics, you can use a ready-made dashboard [gpbackup Exporter Dashboard](https://grafana.com/grafana/dashboards/22543-gpbackup-exporter-dashboard/) or make your own.
+
 ## Collected metrics
 ### Backup metrics
 | Metric | Description |  Labels | Additional Info |
