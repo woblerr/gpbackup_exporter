@@ -1,4 +1,6 @@
 ---
+version: 2
+
 project_name: gpbackup_exporter
 
 builds:
@@ -48,4 +50,4 @@ release:
   draft: true
 
 changelog:
-  skip: true
+  disable: true
