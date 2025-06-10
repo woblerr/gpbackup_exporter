@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -9,15 +10,16 @@ import (
 	"time"
 
 	kingpin "github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus/common/promlog"
-	"github.com/prometheus/common/promlog/flag"
+	"github.com/prometheus/client_golang/prometheus"
+	version_collector "github.com/prometheus/client_golang/prometheus/collectors/version"
+	"github.com/prometheus/common/promslog"
+	"github.com/prometheus/common/promslog/flag"
+	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
 	"github.com/woblerr/gpbackup_exporter/gpbckpexporter"
 )
 
-var version = "unknown"
+const exporterName = "gpbackup_exporter"
 
 func main() {
 	var (
@@ -60,9 +62,10 @@ func main() {
 		).Default("false").Bool()
 	)
 	// Set logger config.
-	promlogConfig := &promlog.Config{}
+	promslogConfig := &promslog.Config{}
 	// Add flags log.level and log.format from promlog package.
-	flag.AddFlags(kingpin.CommandLine, promlogConfig)
+	flag.AddFlags(kingpin.CommandLine, promslogConfig)
+	kingpin.Version(version.Print(exporterName))
 	// Add short help flag.
 	kingpin.HelpFlag.Short('h')
 	// Load command line arguments.
@@ -72,63 +75,64 @@ func main() {
 	// Catch  listed signals.
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	// Set logger.
-	logger := promlog.New(promlogConfig)
+	logger := promslog.New(promslogConfig)
 	// Method invoked upon seeing signal.
-	go func(logger log.Logger) {
+	go func(logger *slog.Logger) {
 		s := <-sigs
-		level.Warn(logger).Log(
-			"msg", "Stopping exporter",
+		logger.Warn(
+			"Stopping exporter",
 			"name", filepath.Base(os.Args[0]),
 			"signal", s)
 		os.Exit(1)
 	}(logger)
-	level.Info(logger).Log(
-		"msg", "Starting exporter",
+	logger.Info(
+		"Starting exporter",
 		"name", filepath.Base(os.Args[0]),
-		"version", version)
-	level.Info(logger).Log(
-		"mgs", "History database file path",
+		"version", version.Info())
+	logger.Info("Build context", "build_context", version.BuildContext())
+	logger.Info(
+		"History database file path",
 		"file", *gpbckpHistoryFilePath)
-	level.Info(logger).Log(
-		"msg", "Collecting metrics for deleted and failed backups",
+	logger.Info(
+		"Collecting metrics for deleted and failed backups",
 		"deleted", *gpbckpBackupCollectDeleted,
 		"failed", gpbckpBackupCollectFailed,
 	)
 	if *collectionDepth > 0 {
-		level.Info(logger).Log(
-			"mgs", "Metrics depth collection in days",
+		logger.Info(
+			"Metrics depth collection in days",
 			"depth", *collectionDepth)
 	}
 	if strings.Join(*gpbckpIncludeDB, "") != "" {
 		for _, db := range *gpbckpIncludeDB {
-			level.Info(logger).Log(
-				"mgs", "Collecting metrics for specific DB",
+			logger.Info(
+				"Collecting metrics for specific DB",
 				"DB", db)
 		}
 	}
 	if strings.Join(*gpbckpExcludeDB, "") != "" {
 		for _, db := range *gpbckpExcludeDB {
-			level.Info(logger).Log(
-				"mgs", "Exclude collecting metrics for specific DB",
+			logger.Info(
+				"Exclude collecting metrics for specific DB",
 				"DB", db)
 		}
 	}
 	if *gpbckpBackupType != "" {
-		level.Info(logger).Log(
-			"mgs", "Collecting metrics for specific backup type",
+		logger.Info(
+			"Collecting metrics for specific backup type",
 			"type", *gpbckpBackupType)
 	}
 	// Setup parameters for exporter.
 	gpbckpexporter.SetPromPortAndPath(*webAdditionalToolkitFlags, *webPath)
-	level.Info(logger).Log(
-		"mgs", "Use exporter parameters",
+	logger.Info(
+		"Use exporter parameters",
 		"endpoint", *webPath,
 		"config.file", *webAdditionalToolkitFlags.WebConfigFile,
 	)
-	// Start exporter.
-	gpbckpexporter.StartPromEndpoint(logger)
-	// Set up exporter info metric.
-	gpbckpexporter.GetExporterInfo(version, logger)
+	// Exporter build info metric.
+	prometheus.MustRegister(version_collector.NewCollector(exporterName))
+	// Start web server.
+	gpbckpexporter.StartPromEndpoint(version.Info(), logger)
 	for {
 		// Get information form gpbackup_history.db.
 		gpbckpexporter.GetGPBackupInfo(

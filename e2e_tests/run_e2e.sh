@@ -65,7 +65,7 @@ declare -a REGEX_LIST=(
     '^gpbackup_backup_status{.*} 0$|6'
     '^gpbackup_exporter_status{database_name="test"} 1$|1'
     '^gpbackup_exporter_status{database_name="demo"} 1$|1'
-    '^gpbackup_exporter_info{.*}|1' 
+    '^gpbackup_exporter_build_info{.*}|1' 
 )
 
 # Check results.

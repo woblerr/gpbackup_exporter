@@ -2,14 +2,13 @@ package gpbckpexporter
 
 import (
 	"errors"
+	"log/slog"
 	"os"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/promlog"
 	"github.com/woblerr/gpbackman/gpbckpconfig"
 )
 
@@ -58,10 +57,10 @@ func TestGetDeletedStatusCode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1 := getDeletedStatusCode(tt.args.valueDateDeleted)
 			if got != tt.want {
-				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
+				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", tt.want, got)
 			}
 			if got1 != tt.want1 {
-				t.Errorf("\nSecond variables do not match:\n%v\nwant:\n%v", got1, tt.want1)
+				t.Errorf("\nSecond variables do not match:\n%v\nwant:\n%v", tt.want1, got1)
 			}
 		})
 	}
@@ -79,28 +78,23 @@ func TestSetUpMetricValue(t *testing.T) {
 		wantErr bool
 	}{
 		{"setUpMetricValueError",
-			args{gpbckpExporterInfoMetric, 0, []string{"demo", "bad"}},
+			args{gpbckpExporterStatusMetric, 0, []string{"demo", "bad"}},
 			true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := setUpMetricValue(tt.args.metric, tt.args.value, tt.args.labels...); (err != nil) != tt.wantErr {
-				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", err, tt.wantErr)
+				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", tt.wantErr, err)
 			}
 		})
 	}
 }
-func getLogger() log.Logger {
-	var err error
-	logLevel := &promlog.AllowedLevel{}
-	err = logLevel.Set("info")
-	if err != nil {
-		panic(err)
-	}
-	promlogConfig := &promlog.Config{}
-	promlogConfig.Level = logLevel
-	return promlog.New(promlogConfig)
+
+func getLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
 }
 
 func fakeSetUpMetricValue(metric *prometheus.GaugeVec, value float64, labels ...string) error {
@@ -186,7 +180,7 @@ func TestDbInList(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := dbInList(tt.args.db, tt.args.listExclude); got != tt.want {
-				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
+				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", tt.want, got)
 			}
 		})
 	}

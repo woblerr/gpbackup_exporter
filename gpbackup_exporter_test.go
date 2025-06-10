@@ -33,7 +33,6 @@ func TestMain(t *testing.T) {
 	urlList := []string{
 		fmt.Sprintf("http://localhost:%d/metrics", port),
 		fmt.Sprintf("http://localhost:%d/", port),
-		fmt.Sprintf("http://localhost:%d/health", port),
 	}
 	for _, url := range urlList {
 		resp, err := http.Get(url)
