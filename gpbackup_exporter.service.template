@@ -3,7 +3,7 @@ Description=gpbackup_exporter
 
 [Service]
 Type=simple
-Environment="ARGS=--gpbackup.history-file=/data/master/gpseg-1/gpbackup_history.db --web.endpoint=/metrics --web.listen-address=:19854 --collect.interval=600"
+Environment="ARGS=--gpbackup.history-file=/data/master/gpseg-1/gpbackup_history.db --web.telemetry-path=/metrics --web.listen-address=:19854 --collect.interval=600"
 EnvironmentFile=-/etc/default/gpbackup_exporter
 ExecStart=/usr/bin/gpbackup_exporter $ARGS
 Restart=always

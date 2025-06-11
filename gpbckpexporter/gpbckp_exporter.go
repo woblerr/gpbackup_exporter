@@ -18,7 +18,7 @@ var (
 
 // SetPromPortAndPath sets HTTP endpoint parameters
 // from command line arguments:
-// 'web.endpoint',
+// 'web.telemetry-path',
 // 'web.listen-address',
 // 'web.config.file',
 // 'web.systemd-socket' (Linux only)
@@ -30,8 +30,11 @@ func SetPromPortAndPath(flagsConfig web.FlagConfig, endpoint string) {
 // StartPromEndpoint run HTTP endpoint
 func StartPromEndpoint(version string, logger *slog.Logger) {
 	go func(logger *slog.Logger) {
+		if webEndpoint == "" {
+			logger.Error("Metric endpoint is empty", "endpoint", webEndpoint)
+		}
 		http.Handle(webEndpoint, promhttp.Handler())
-		if webEndpoint != "/" && webEndpoint != "" {
+		if webEndpoint != "/" {
 			landingConfig := web.LandingConfig{
 				Name:        "gpbackup exporter",
 				Description: "Prometheus exporter for gpbackup",

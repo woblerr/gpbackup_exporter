@@ -40,15 +40,15 @@ func TestMain(t *testing.T) {
 			t.Errorf("\nGet error during GET:\n%v", err)
 		}
 		if resp.StatusCode != 200 {
-			t.Errorf("\nGet bad response code:\n%v\nwant:\n%v", resp.StatusCode, 200)
+			t.Errorf("\nGet bad response code for %s:\n%v\nwant:\n%v", url, resp.StatusCode, 200)
 		}
 		defer resp.Body.Close()
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
-			t.Errorf("\nGet error during read resp body:\n%v", err)
+			t.Errorf("\nGet error during read resp body for %s:\n%v", url, err)
 		}
 		if len(string(b)) == 0 {
-			t.Errorf("\nGet zero body:\n%s", string(b))
+			t.Errorf("\nGet zero body for %s:\n%s", url, string(b))
 		}
 	}
 }

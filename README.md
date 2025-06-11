@@ -54,11 +54,11 @@ usage: gpbackup_exporter [<flags>]
 
 Flags:
   -h, --[no-]help                Show context-sensitive help (also try --help-long and --help-man).
-      --web.endpoint="/metrics"  Endpoint used for metrics.
+      --web.telemetry-path="/metrics"  
+                                 Path under which to expose metrics.
       --web.listen-address=:19854 ...  
-                                 Addresses on which to expose metrics and web interface. Repeatable for multiple addresses.
-      --web.config.file=""       Path to configuration file that can enable TLS or authentication. See:
-                                 https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md
+                                 Addresses on which to expose metrics and web interface. Repeatable for multiple addresses. Examples: `:9100` or `[::1]:9100` for http, `vsock://:9100` for vsock
+      --web.config.file=""       Path to configuration file that can enable TLS or authentication. See: https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md
       --collect.interval=600     Collecting metrics interval in seconds.
       --collect.depth=0          Metrics depth collection in days. Metrics for backup older than this interval will not be collected. 0 - disable.
       --gpbackup.history-file=""  
@@ -74,6 +74,7 @@ Flags:
                                  Collecting metrics for failed backups.
       --log.level=info           Only log messages with the given severity or above. One of: [debug, info, warn, error]
       --log.format=logfmt        Output format of log messages. One of: [logfmt, json]
+      --[no-]version             Show application version.
 ```
 
 #### Additional description of flags.
@@ -112,7 +113,7 @@ The description of TLS configuration and basic authentication can be found at [e
 
 Environment variables supported by this image:
 * `TZ` - container's time zone, default `Etc/UTC`;
-* `EXPORTER_ENDPOINT` - metrics endpoint, default `/metrics`;
+* `EXPORTER_TELEMETRY_PATH` - path under which to expose metrics, default `/metrics`;
 * `EXPORTER_PORT` - port for prometheus metrics to listen on, default `19854`;
 * `EXPORTER_CONFIG` - path to the configuration file for TLS and/or basic authentication, default `""`;
 * `COLLECT_INTERVAL` - collecting metrics interval in seconds, default `600`;
