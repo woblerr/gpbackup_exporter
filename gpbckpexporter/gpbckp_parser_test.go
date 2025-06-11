@@ -1,10 +1,12 @@
 package gpbckpexporter
 
 import (
+	"bytes"
 	"errors"
 	"log/slog"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -99,6 +101,46 @@ func getLogger() *slog.Logger {
 
 func fakeSetUpMetricValue(metric *prometheus.GaugeVec, value float64, labels ...string) error {
 	return errors.New("custom error for test")
+}
+
+// Create a SQLite database file with missing tables.
+func createCorruptedDBFile(t *testing.T) string {
+	tempFile, err := os.CreateTemp("", "test_corrupted_*.db")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer tempFile.Close()
+	return tempFile.Name()
+}
+
+// Create a database with invalid backup name.
+func createDBWithInvalidBackupName(t *testing.T) string {
+	tempFile, err := os.CreateTemp("", "test_invalid_backup_*.db")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer tempFile.Close()
+	// Create a database with valid schema but insert an invalid backup name.
+	db, err := gpbckpconfig.OpenHistoryDB(tempFile.Name())
+	if err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	defer db.Close()
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS backups (
+		timestamp TEXT PRIMARY KEY,
+		date_deleted TEXT,
+		database_name TEXT,
+		status TEXT
+	)`)
+	if err != nil {
+		t.Fatalf("Failed to create backups table: %v", err)
+	}
+	// Insert a backup with an invalid timestamp.
+	_, err = db.Exec(`INSERT INTO backups (timestamp, date_deleted, database_name, status) VALUES ('invalid_backup_name', '', 'testdb', 'Success')`)
+	if err != nil {
+		t.Fatalf("Failed to insert test data: %v", err)
+	}
+	return tempFile.Name()
 }
 
 //nolint:unparam
@@ -270,6 +312,67 @@ func TestParseBackupData(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetDataFromHistoryDB(t *testing.T) {
+	type args struct {
+		historyFile    string
+		collectDeleted bool
+		collectFailed  bool
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+		errText string
+	}{
+		{
+			"InvalidDBFile",
+			args{
+				historyFile:    "/nonexistent/path/to/db.db",
+				collectDeleted: false,
+				collectFailed:  false,
+			},
+			true,
+			"level=ERROR msg=\"Get backups from history db failed\"",
+		},
+		{
+			"CorruptedDBWithInvalidBackupData",
+			args{
+				historyFile:    createCorruptedDBFile(t),
+				collectDeleted: false,
+				collectFailed:  false,
+			},
+			true,
+			"level=ERROR msg=\"Get backups from history db failed\"",
+		},
+		{
+			"DBWithInvalidBackupName",
+			args{
+				historyFile:    createDBWithInvalidBackupName(t),
+				collectDeleted: false,
+				collectFailed:  false,
+			},
+			true,
+			"level=ERROR msg=\"Get backup data from history db failed\"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := &bytes.Buffer{}
+			logger := slog.New(slog.NewTextHandler(out, &slog.HandlerOptions{Level: slog.LevelError}))
+			_, err := getDataFromHistoryDB(tt.args.historyFile, tt.args.collectDeleted, tt.args.collectFailed, logger)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getDataFromHistoryDB() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr && tt.errText != "" {
+				logOutput := out.String()
+				if !strings.Contains(logOutput, tt.errText) {
+					t.Errorf("\nVariables do not match:\n%v\nwantErrText:\n%v", logOutput, tt.errText)
+				}
 			}
 		})
 	}
