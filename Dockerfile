@@ -7,7 +7,7 @@ WORKDIR /build
 RUN apk add --no-cache --update build-base \
     && CGO_ENABLED=1 go build \
         -mod=vendor -trimpath \
-       -ldflags "-s -w \
+        -ldflags "-s -w \
             -X github.com/prometheus/common/version.Version=${REPO_BUILD_TAG} \
             -X github.com/prometheus/common/version.BuildDate=$(date +%Y-%m-%dT%H:%M:%S%z) \
             -X github.com/prometheus/common/version.Branch=$(git rev-parse --abbrev-ref HEAD) \
