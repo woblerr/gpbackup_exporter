@@ -322,7 +322,7 @@ func TestGetDataFromHistoryDB(t *testing.T) {
 		historyFile    string
 		collectDeleted bool
 		collectFailed  bool
-		cleanUpTestDb  bool
+		cleanUpTestDB  bool
 	}
 	tests := []struct {
 		name    string
@@ -336,7 +336,7 @@ func TestGetDataFromHistoryDB(t *testing.T) {
 				historyFile:    "/nonexistent/path/to/db.db",
 				collectDeleted: false,
 				collectFailed:  false,
-				cleanUpTestDb:  false,
+				cleanUpTestDB:  false,
 			},
 			true,
 			"level=ERROR msg=\"Get backups from history db failed\"",
@@ -347,7 +347,7 @@ func TestGetDataFromHistoryDB(t *testing.T) {
 				historyFile:    createCorruptedDBFile(t),
 				collectDeleted: false,
 				collectFailed:  false,
-				cleanUpTestDb:  true,
+				cleanUpTestDB:  true,
 			},
 			true,
 			"level=ERROR msg=\"Get backups from history db failed\"",
@@ -358,7 +358,7 @@ func TestGetDataFromHistoryDB(t *testing.T) {
 				historyFile:    createDBWithInvalidBackupName(t),
 				collectDeleted: false,
 				collectFailed:  false,
-				cleanUpTestDb:  true,
+				cleanUpTestDB:  true,
 			},
 			true,
 			"level=ERROR msg=\"Get backup data from history db failed\"",
@@ -366,7 +366,7 @@ func TestGetDataFromHistoryDB(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.args.cleanUpTestDb {
+			if tt.args.cleanUpTestDB {
 				defer os.Remove(tt.args.historyFile)
 			}
 			out := &bytes.Buffer{}
