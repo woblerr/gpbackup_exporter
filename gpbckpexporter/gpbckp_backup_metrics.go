@@ -1,10 +1,9 @@
 package gpbckpexporter
 
 import (
+	"log/slog"
 	"strconv"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/woblerr/gpbackman/gpbckpconfig"
@@ -66,23 +65,23 @@ var (
 //   - gpbackup_backup_deletion_status
 //   - gpbackup_backup_info
 //   - gpbackup_backup_duration_seconds
-func getBackupMetrics(backupData gpbckpconfig.BackupConfig, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
+func getBackupMetrics(backupData gpbckpconfig.BackupConfig, setUpMetricValueFun setUpMetricValueFunType, logger *slog.Logger) {
 	var (
 		bckpDuration float64
 		err          error
 	)
 	bckpType, err := backupData.GetBackupType()
 	if err != nil {
-		level.Error(logger).Log("msg", "Parse backup type value failed", "err", err)
+		logger.Error("Parse backup type value failed", "err", err)
 	}
 	backpObjectFiltering, err := backupData.GetObjectFilteringInfo()
 	if err != nil {
-		level.Error(logger).Log("msg", "Parse object filtering value failed", "err", err)
+		logger.Error("Parse object filtering value failed", "err", err)
 	}
 	bckpDuration, err = backupData.GetBackupDuration()
 	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Failed to parse dates to calculate duration",
+		logger.Error(
+			"Failed to parse dates to calculate duration",
 			"err", err,
 		)
 	}

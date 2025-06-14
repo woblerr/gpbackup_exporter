@@ -1,12 +1,11 @@
 package gpbckpexporter
 
 import (
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/woblerr/gpbackman/gpbckpconfig"
@@ -19,7 +18,7 @@ var (
 
 // SetPromPortAndPath sets HTTP endpoint parameters
 // from command line arguments:
-// 'web.endpoint',
+// 'web.telemetry-path',
 // 'web.listen-address',
 // 'web.config.file',
 // 'web.systemd-socket' (Linux only)
@@ -29,30 +28,44 @@ func SetPromPortAndPath(flagsConfig web.FlagConfig, endpoint string) {
 }
 
 // StartPromEndpoint run HTTP endpoint
-func StartPromEndpoint(logger log.Logger) {
-	go func(logger log.Logger) {
+func StartPromEndpoint(version string, logger *slog.Logger) {
+	go func(logger *slog.Logger) {
+		if webEndpoint == "" {
+			logger.Error("Metric endpoint is empty", "endpoint", webEndpoint)
+		}
 		http.Handle(webEndpoint, promhttp.Handler())
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte(`<html>
-			<head><title>gpbackup exporter</title></head>
-			<body>
-			<h1>gpbackup exporter</h1>
-			<p><a href='` + webEndpoint + `'>Metrics</a></p>
-			</body>
-			</html>`))
-		})
+		if webEndpoint != "/" {
+			landingConfig := web.LandingConfig{
+				Name:        "gpbackup exporter",
+				Description: "Prometheus exporter for gpbackup",
+				HeaderColor: "#476b6b",
+				Version:     version,
+				Links: []web.LandingLinks{
+					{
+						Address: webEndpoint,
+						Text:    "Metrics",
+					},
+				},
+			}
+			landingPage, err := web.NewLandingPage(landingConfig)
+			if err != nil {
+				logger.Error("Error creating landing page", "err", err)
+				os.Exit(1)
+			}
+			http.Handle("/", landingPage)
+		}
 		server := &http.Server{
 			ReadHeaderTimeout: 5 * time.Second,
 		}
 		if err := web.ListenAndServe(server, &webFlagsConfig, logger); err != nil {
-			level.Error(logger).Log("msg", "Run web endpoint failed", "err", err)
+			logger.Error("Run web endpoint failed", "err", err)
 			os.Exit(1)
 		}
 	}(logger)
 }
 
 // GetGPBackupInfo get and parse gpbackup history file
-func GetGPBackupInfo(historyFile, backupType string, collectDeleted, collectFailed bool, dbInclude, dbExclude []string, collectDepth int, logger log.Logger) {
+func GetGPBackupInfo(historyFile, backupType string, collectDeleted, collectFailed bool, dbInclude, dbExclude []string, collectDepth int, logger *slog.Logger) {
 	var parseHData gpbckpconfig.History
 	// The flag indicates whether it was possible to get data from the gpbackup history.
 	// By default, it's set to true.
@@ -78,7 +91,7 @@ func GetGPBackupInfo(historyFile, backupType string, collectDeleted, collectFail
 	// However, even now, we can reduce backup number using filters for deleted and failed backups.
 	parseHData, err := parseBackupData(historyFile, collectDeleted, collectFailed, logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Get data failed", "err", err)
+		logger.Error("Get data failed", "err", err)
 		getDataSuccessStatus = false
 	}
 	// Reset metrics.
@@ -96,7 +109,7 @@ func GetGPBackupInfo(historyFile, backupType string, collectDeleted, collectFail
 					dbStatus[db] = getDataSuccessStatus
 					bckpType, err := parseHData.BackupConfigs[i].GetBackupType()
 					if err != nil {
-						level.Error(logger).Log("msg", "Parse backup type value failed", "err", err)
+						logger.Error("Parse backup type value failed", "err", err)
 					}
 					// Check backup type and compare with backup type filter.
 					if backupType == "" || backupType == bckpType {
@@ -107,11 +120,11 @@ func GetGPBackupInfo(historyFile, backupType string, collectDeleted, collectFail
 						// If this is not the case, then there are many questions about the backup process.
 						bckpStartTime, err := time.ParseInLocation(gpbckpconfig.Layout, parseHData.BackupConfigs[i].Timestamp, time.Local)
 						if err != nil {
-							level.Error(logger).Log("msg", "Parse backup timestamp value failed", "err", err)
+							logger.Error("Parse backup timestamp value failed", "err", err)
 						}
 						bckpStopTime, err := time.ParseInLocation(gpbckpconfig.Layout, parseHData.BackupConfigs[i].EndTime, time.Local)
 						if err != nil {
-							level.Error(logger).Log("msg", "Parse backup end time value failed", "err", err)
+							logger.Error("Parse backup end time value failed", "err", err)
 						}
 						// Only if set correct value for collectDepth.
 						if collectDepth > 0 {
@@ -164,21 +177,16 @@ func GetGPBackupInfo(historyFile, backupType string, collectDeleted, collectFail
 				// It is necessary to set zero metric value for this db.
 				getDataSuccessStatus = false
 				dbStatus[db] = getDataSuccessStatus
-				level.Warn(logger).Log("msg", "DB is specified in include and exclude lists", "DB", db)
+				logger.Warn("DB is specified in include and exclude lists", "DB", db)
 			}
 		}
 		if len(lastBackups) != 0 {
 			getBackupLastMetrics(lastBackups, currentUnixTime, setUpMetricValue, logger)
 		} else {
-			level.Warn(logger).Log("msg", "No succeed backups")
+			logger.Warn("No succeed backups")
 		}
 		getExporterStatusMetrics(dbStatus, setUpMetricValue, logger)
 	} else {
-		level.Warn(logger).Log("msg", "No backup data returned")
+		logger.Warn("No backup data returned")
 	}
-}
-
-// GetExporterInfo set exporter info metric
-func GetExporterInfo(exporterVersion string, logger log.Logger) {
-	getExporterMetrics(exporterVersion, setUpMetricValue, logger)
 }

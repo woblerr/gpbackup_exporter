@@ -2,11 +2,11 @@ package gpbckpexporter
 
 import (
 	"bytes"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/greenplum-db/gpbackup/history"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/woblerr/gpbackman/gpbckpconfig"
@@ -117,20 +117,20 @@ func TestGetGPBackupInfo(t *testing.T) {
 				[]string{""},
 				0,
 			},
-			`level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=metadata-only,test,none,none,20230118162454
-level=debug msg="Set up metric" metric=gpbackup_backup_deletion_status value=0 labels=metadata-only,test,none,none,none,20230118162454
-level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.30.5,metadata-only,gzip,test,6.23.0,none,none,none,20230118162454,false
-level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=metadata-only,test,20230118162456,none,none,20230118162454
-level=debug msg="Set up metric" metric=gpbackup_backup_status value=0 labels=full,test,none,none,20230118152654
-level=debug msg="Set up metric" metric=gpbackup_backup_deletion_status value=0 labels=full,test,none,none,none,20230118152654
-level=debug msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.30.5,full,gzip,test,6.23.0,none,none,none,20230118152654,false
-level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=full,test,20230118152656,none,none,20230118152654
+			`level=DEBUG msg="Set up metric" metric=gpbackup_backup_status value=0 labels=metadata-only,test,none,none,20230118162454
+level=DEBUG msg="Set up metric" metric=gpbackup_backup_deletion_status value=0 labels=metadata-only,test,none,none,none,20230118162454
+level=DEBUG msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.30.5,metadata-only,gzip,test,6.23.0,none,none,none,20230118162454,false
+level=DEBUG msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=metadata-only,test,20230118162456,none,none,20230118162454
+level=DEBUG msg="Set up metric" metric=gpbackup_backup_status value=0 labels=full,test,none,none,20230118152654
+level=DEBUG msg="Set up metric" metric=gpbackup_backup_deletion_status value=0 labels=full,test,none,none,none,20230118152654
+level=DEBUG msg="Set up metric" metric=gpbackup_backup_info value=1 labels=/data/backups,1.30.5,full,gzip,test,6.23.0,none,none,none,20230118152654,false
+level=DEBUG msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 labels=full,test,20230118152656,none,none,20230118152654
 `,
 		},
 		{
 			"NoDataReturn",
 			args{"", "", false, false, []string{""}, []string{""}, 0},
-			"level=warn msg=\"No backup data returned\"",
+			"level=WARN msg=\"No backup data returned\"",
 		},
 		{
 			"UseDepthAndOlderDepthInterval",
@@ -170,7 +170,7 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
 				[]string{""},
 				14,
 			},
-			"level=warn msg=\"No succeed backups\"",
+			"level=WARN msg=\"No succeed backups\"",
 		},
 		{
 			"DBinIncludeAndExclude",
@@ -210,7 +210,7 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
 				[]string{"test"},
 				0,
 			},
-			"level=warn msg=\"DB is specified in include and exclude lists\" DB=test",
+			"level=WARN msg=\"DB is specified in include and exclude lists\" DB=test",
 		},
 		{
 			"ErrorsInParseValues",
@@ -251,7 +251,7 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
 				[]string{""},
 				0,
 			},
-			`level=error msg="Parse backup timestamp value failed" err="parsing time \"test\" as \"20060102150405\": cannot parse \"test\" as \"2006\""
+			`level=ERROR msg="Parse backup timestamp value failed" err="parsing time \"test\" as \"20060102150405\": cannot parse \"test\" as \"2006\""
 `},
 	}
 	for _, tt := range tests {
@@ -263,7 +263,15 @@ level=debug msg="Set up metric" metric=gpbackup_backup_duration_seconds value=2 
 			}
 			defer os.Remove(tempFile.Name())
 			out := &bytes.Buffer{}
-			lc := log.NewLogfmtLogger(out)
+			lc := slog.New(slog.NewTextHandler(out, &slog.HandlerOptions{
+				Level: slog.LevelDebug,
+				ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+					if a.Key == slog.TimeKey {
+						return slog.Attr{}
+					}
+					return a
+				},
+			}))
 			GetGPBackupInfo(
 				tempFile.Name(),
 				tt.args.bckpType,

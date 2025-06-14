@@ -1,15 +1,16 @@
 package gpbckpexporter
 
 import (
+	"bytes"
 	"errors"
+	"log/slog"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/promlog"
 	"github.com/woblerr/gpbackman/gpbckpconfig"
 )
 
@@ -79,7 +80,7 @@ func TestSetUpMetricValue(t *testing.T) {
 		wantErr bool
 	}{
 		{"setUpMetricValueError",
-			args{gpbckpExporterInfoMetric, 0, []string{"demo", "bad"}},
+			args{gpbckpExporterStatusMetric, 0, []string{"demo", "bad"}},
 			true,
 		},
 	}
@@ -91,20 +92,55 @@ func TestSetUpMetricValue(t *testing.T) {
 		})
 	}
 }
-func getLogger() log.Logger {
-	var err error
-	logLevel := &promlog.AllowedLevel{}
-	err = logLevel.Set("info")
-	if err != nil {
-		panic(err)
-	}
-	promlogConfig := &promlog.Config{}
-	promlogConfig.Level = logLevel
-	return promlog.New(promlogConfig)
+
+func getLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
 }
 
 func fakeSetUpMetricValue(metric *prometheus.GaugeVec, value float64, labels ...string) error {
 	return errors.New("custom error for test")
+}
+
+// Create a SQLite database file with missing tables.
+func createCorruptedDBFile(t *testing.T) string {
+	tempFile, err := os.CreateTemp("", "test_corrupted_*.db")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer tempFile.Close()
+	return tempFile.Name()
+}
+
+// Create a database with invalid backup name.
+func createDBWithInvalidBackupName(t *testing.T) string {
+	tempFile, err := os.CreateTemp("", "test_invalid_backup_*.db")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer tempFile.Close()
+	// Create a database with valid schema but insert an invalid backup name.
+	db, err := gpbckpconfig.OpenHistoryDB(tempFile.Name())
+	if err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	defer db.Close()
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS backups (
+		timestamp TEXT PRIMARY KEY,
+		date_deleted TEXT,
+		database_name TEXT,
+		status TEXT
+	)`)
+	if err != nil {
+		t.Fatalf("Failed to create backups table: %v", err)
+	}
+	// Insert a backup with an invalid timestamp.
+	_, err = db.Exec(`INSERT INTO backups (timestamp, date_deleted, database_name, status) VALUES ('invalid_backup_name', '', 'testdb', 'Success')`)
+	if err != nil {
+		t.Fatalf("Failed to insert test data: %v", err)
+	}
+	return tempFile.Name()
 }
 
 //nolint:unparam
@@ -276,6 +312,74 @@ func TestParseBackupData(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("\nVariables do not match:\n%v\nwant:\n%v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetDataFromHistoryDB(t *testing.T) {
+	type args struct {
+		historyFile    string
+		collectDeleted bool
+		collectFailed  bool
+		cleanUpTestDB  bool
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+		errText string
+	}{
+		{
+			"InvalidDBFile",
+			args{
+				historyFile:    "/nonexistent/path/to/db.db",
+				collectDeleted: false,
+				collectFailed:  false,
+				cleanUpTestDB:  false,
+			},
+			true,
+			"level=ERROR msg=\"Get backups from history db failed\"",
+		},
+		{
+			"CorruptedDBWithInvalidBackupData",
+			args{
+				historyFile:    createCorruptedDBFile(t),
+				collectDeleted: false,
+				collectFailed:  false,
+				cleanUpTestDB:  true,
+			},
+			true,
+			"level=ERROR msg=\"Get backups from history db failed\"",
+		},
+		{
+			"DBWithInvalidBackupName",
+			args{
+				historyFile:    createDBWithInvalidBackupName(t),
+				collectDeleted: false,
+				collectFailed:  false,
+				cleanUpTestDB:  true,
+			},
+			true,
+			"level=ERROR msg=\"Get backup data from history db failed\"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.args.cleanUpTestDB {
+				defer os.Remove(tt.args.historyFile)
+			}
+			out := &bytes.Buffer{}
+			logger := slog.New(slog.NewTextHandler(out, &slog.HandlerOptions{Level: slog.LevelError}))
+			_, err := getDataFromHistoryDB(tt.args.historyFile, tt.args.collectDeleted, tt.args.collectFailed, logger)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getDataFromHistoryDB() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr && tt.errText != "" {
+				logOutput := out.String()
+				if !strings.Contains(logOutput, tt.errText) {
+					t.Errorf("\nVariables do not match:\n%v\nwantErrText:\n%v", logOutput, tt.errText)
+				}
 			}
 		})
 	}

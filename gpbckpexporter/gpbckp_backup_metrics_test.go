@@ -3,11 +3,10 @@ package gpbckpexporter
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
 	"github.com/woblerr/gpbackman/gpbckpconfig"
@@ -119,11 +118,10 @@ func TestGetBackupMetricsErrorsAndDebugs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resetBackupMetrics()
 			out := &bytes.Buffer{}
-			logger := log.NewLogfmtLogger(out)
-			lc := log.With(logger, level.AllowInfo())
+			lc := slog.New(slog.NewTextHandler(out, &slog.HandlerOptions{Level: slog.LevelDebug}))
 			getBackupMetrics(tt.args.backupData, tt.args.setUpMetricValueFun, lc)
-			errorsOutputCount := strings.Count(out.String(), "level=error")
-			debugsOutputCount := strings.Count(out.String(), "level=debug")
+			errorsOutputCount := strings.Count(out.String(), "level=ERROR")
+			debugsOutputCount := strings.Count(out.String(), "level=DEBUG")
 			if tt.args.errorsCount != errorsOutputCount || tt.args.debugsCount != debugsOutputCount {
 				t.Errorf("\nVariables do not match:\nerrors=%d, debugs=%d\nwant:\nerrors=%d, debugs=%d",
 					tt.args.errorsCount, tt.args.debugsCount,

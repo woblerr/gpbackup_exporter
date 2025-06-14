@@ -1,9 +1,9 @@
 package gpbckpexporter
 
 import (
+	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -18,7 +18,7 @@ var gpbckpBackupSinceLastCompletionSecondsMetric = promauto.NewGaugeVec(promethe
 
 // Set backup metrics:
 //   - gpbackup_backup_since_last_completion_seconds
-func getBackupLastMetrics(lastBackups lastBackupMap, currentUnixTime int64, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger) {
+func getBackupLastMetrics(lastBackups lastBackupMap, currentUnixTime int64, setUpMetricValueFun setUpMetricValueFunType, logger *slog.Logger) {
 	for db, bckps := range lastBackups {
 		for bckpType, endTime := range bckps {
 			// Seconds since the last completed backups.

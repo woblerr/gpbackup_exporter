@@ -2,12 +2,11 @@ package gpbckpexporter
 
 import (
 	"errors"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/woblerr/gpbackman/gpbckpconfig"
 )
@@ -75,17 +74,17 @@ func resetMetrics() {
 	resetExporterMetrics()
 }
 
-func setUpMetric(metric *prometheus.GaugeVec, metricName string, value float64, setUpMetricValueFun setUpMetricValueFunType, logger log.Logger, labels ...string) {
-	level.Debug(logger).Log(
-		"msg", "Set up metric",
+func setUpMetric(metric *prometheus.GaugeVec, metricName string, value float64, setUpMetricValueFun setUpMetricValueFunType, logger *slog.Logger, labels ...string) {
+	logger.Debug(
+		"Set up metric",
 		"metric", metricName,
 		"value", value,
 		"labels", strings.Join(labels, ","),
 	)
 	err := setUpMetricValueFun(metric, value, labels...)
 	if err != nil {
-		level.Error(logger).Log(
-			"msg", "Metric set up failed",
+		logger.Error(
+			"Metric set up failed",
 			"metric", metricName,
 			"err", err,
 		)
@@ -113,7 +112,7 @@ func listEmpty(list []string) bool {
 //   - file with extension .db (sqlite).
 //
 // Returns parsed data or error.
-func parseBackupData(historyFile string, collectDeleted, collectFailed bool, logger log.Logger) (gpbckpconfig.History, error) {
+func parseBackupData(historyFile string, collectDeleted, collectFailed bool, logger *slog.Logger) (gpbckpconfig.History, error) {
 	var parseHData gpbckpconfig.History
 	if filepath.Ext(historyFile) != ".db" {
 		return parseHData, errors.New("file has an extension other than db (sqlite)")
@@ -121,29 +120,29 @@ func parseBackupData(historyFile string, collectDeleted, collectFailed bool, log
 	return getDataFromHistoryDB(historyFile, collectDeleted, collectFailed, logger)
 }
 
-func getDataFromHistoryDB(historyFile string, collectDeleted, collectFailed bool, logger log.Logger) (gpbckpconfig.History, error) {
+func getDataFromHistoryDB(historyFile string, collectDeleted, collectFailed bool, logger *slog.Logger) (gpbckpconfig.History, error) {
 	var hData gpbckpconfig.History
 	hDB, err := gpbckpconfig.OpenHistoryDB(historyFile)
 	if err != nil {
-		level.Error(logger).Log("msg", "Open gpbackup history db failed", "err", err)
+		logger.Error("Open gpbackup history db failed", "err", err)
 		return hData, err
 	}
 	defer func() {
 		errClose := hDB.Close()
 		if errClose != nil {
-			level.Error(logger).Log("msg", "Close gpbackup history db failed", "err", errClose)
+			logger.Error("Close gpbackup history db failed", "err", errClose)
 		}
 	}()
 	backupList, err := gpbckpconfig.GetBackupNamesDB(collectDeleted, collectFailed, hDB)
 	if err != nil {
-		level.Error(logger).Log("msg", "Get backups from history db failed", "err", err)
+		logger.Error("Get backups from history db failed", "err", err)
 		return hData, err
 	}
 	// Get data for selected backups.
 	for _, backupName := range backupList {
 		backupData, err := gpbckpconfig.GetBackupDataDB(backupName, hDB)
 		if err != nil {
-			level.Error(logger).Log("msg", "Get backup data from history db failed", "err", err)
+			logger.Error("Get backup data from history db failed", "err", err)
 			return hData, err
 		}
 		hData.BackupConfigs = append(hData.BackupConfigs, backupData)

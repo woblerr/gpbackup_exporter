@@ -7,13 +7,18 @@ WORKDIR /build
 RUN apk add --no-cache --update build-base \
     && CGO_ENABLED=1 go build \
         -mod=vendor -trimpath \
-        -ldflags "-X main.version=${REPO_BUILD_TAG}" \
+        -ldflags "-s -w \
+            -X github.com/prometheus/common/version.Version=${REPO_BUILD_TAG} \
+            -X github.com/prometheus/common/version.BuildDate=$(date +%Y-%m-%dT%H:%M:%S%z) \
+            -X github.com/prometheus/common/version.Branch=$(git rev-parse --abbrev-ref HEAD) \
+            -X github.com/prometheus/common/version.Revision=$(git rev-parse --short HEAD) \
+            -X github.com/prometheus/common/version.BuildUser=gpbackup_exporter" \
         -o gpbackup_exporter gpbackup_exporter.go
 
 FROM alpine:3.20
 ARG REPO_BUILD_TAG
 ENV TZ="Etc/UTC" \
-    EXPORTER_ENDPOINT="/metrics" \
+    EXPORTER_TELEMETRY_PATH="/metrics" \
     EXPORTER_PORT="19854" \
     EXPORTER_CONFIG="" \
     COLLECT_INTERVAL="600" \
