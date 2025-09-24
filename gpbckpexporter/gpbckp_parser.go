@@ -47,17 +47,17 @@ func getDeletedStatusCode(valueDateDeleted string) (string, float64) {
 		dateDeleted   string
 		deletedStatus float64
 	)
-	switch {
-	case valueDateDeleted == "":
+	switch valueDateDeleted {
+	case "":
 		dateDeleted = emptyLabel
 		deletedStatus = 0
-	case valueDateDeleted == gpbckpconfig.DateDeletedInProgress:
+	case gpbckpconfig.DateDeletedInProgress:
 		dateDeleted = emptyLabel
 		deletedStatus = 2
-	case valueDateDeleted == gpbckpconfig.DateDeletedPluginFailed:
+	case gpbckpconfig.DateDeletedPluginFailed:
 		dateDeleted = emptyLabel
 		deletedStatus = 3
-	case valueDateDeleted == gpbckpconfig.DateDeletedLocalFailed:
+	case gpbckpconfig.DateDeletedLocalFailed:
 		dateDeleted = emptyLabel
 		deletedStatus = 4
 	default:

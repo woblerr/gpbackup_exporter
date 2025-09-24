@@ -143,7 +143,6 @@ func createDBWithInvalidBackupName(t *testing.T) string {
 	return tempFile.Name()
 }
 
-//nolint:unparam
 func templateBackupConfig() gpbckpconfig.BackupConfig {
 	return gpbckpconfig.BackupConfig{
 		BackupDir:             "/data/backups",
@@ -177,7 +176,6 @@ func templateBackupConfig() gpbckpconfig.BackupConfig {
 	}
 }
 
-//nolint:unparam
 func templateUnixTime() int64 {
 	// Thu Jan 18 2023 20:00:00 UTC
 	var curUnixTime int64 = 1674072000
