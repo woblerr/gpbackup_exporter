@@ -8,7 +8,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.5
 	github.com/prometheus/exporter-toolkit v0.15.1
-	github.com/woblerr/gpbackman v0.8.0
+	github.com/woblerr/gpbackman v0.9.0
 )
 
 require (
