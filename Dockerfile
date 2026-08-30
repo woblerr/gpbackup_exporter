@@ -1,6 +1,6 @@
 ARG REPO_BUILD_TAG="unknown"
 
-FROM golang:1.24-alpine3.23 AS builder
+FROM golang:1.25-alpine3.23 AS builder
 ARG REPO_BUILD_TAG
 COPY . /build
 WORKDIR /build
