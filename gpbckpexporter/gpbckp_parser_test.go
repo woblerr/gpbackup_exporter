@@ -337,7 +337,7 @@ func TestGetDataFromHistoryDB(t *testing.T) {
 				cleanUpTestDB:  false,
 			},
 			true,
-			"level=ERROR msg=\"Get backups from history db failed\"",
+			"level=ERROR msg=\"Open gpbackup history db failed\"",
 		},
 		{
 			"CorruptedDBWithInvalidBackupData",
